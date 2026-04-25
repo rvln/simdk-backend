@@ -9,7 +9,7 @@ use App\Services\InventoryService;
 use App\Models\Donation;
 use App\Enums\DonationTypeEnum;
 use App\Enums\DonationStatusEnum;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class DonationController extends Controller
 {
@@ -23,6 +23,7 @@ class DonationController extends Controller
         // Logic delegating to service and generating Midtrans snapshot
         // BRS: Creates transaction as Pending, calls gateway, returns checkout URL.
         $donation = Donation::create([
+            'user_id' => Auth::id(),
             'donorName' => $request->donorName,
             'donorEmail' => $request->donorEmail,
             'donorPhone' => $request->donorPhone,
@@ -43,7 +44,17 @@ class DonationController extends Controller
 
     public function submitItemDonation(SubmitItemDonationRequest $request)
     {
-        $donation = $this->inventoryService->submitPreSubmission($request->validated());
+        $validated = $request->validated();
+
+        $donation = $this->inventoryService->submitPreSubmission(
+            Auth::id(),
+            [
+                'donorName'  => $validated['donorName'],
+                'donorEmail' => $validated['donorEmail'],
+                'donorPhone' => $validated['donorPhone'],
+            ],
+            $validated['items']
+        );
 
         return response()->json([
             'status' => 'success',

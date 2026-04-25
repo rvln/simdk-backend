@@ -10,6 +10,7 @@ use App\Http\Controllers\VisitController;
 use App\Http\Controllers\DistributionController;
 use App\Http\Controllers\TrackingController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\InventoryController;
 
 /*
 |--------------------------------------------------------------------------
@@ -27,6 +28,7 @@ Route::post('/donations/items', [DonationController::class, 'submitItemDonation'
 Route::post('/webhooks/midtrans', [WebhookController::class, 'handleMidtransWebhook']);
 
 Route::get('/tracking/{tracking_code}', [TrackingController::class, 'trackDonation']);
+Route::get('/inventories', [InventoryController::class, 'index']);
 
 /*
 |--------------------------------------------------------------------------

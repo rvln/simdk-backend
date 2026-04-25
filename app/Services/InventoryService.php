@@ -15,40 +15,57 @@ use App\Services\PaymentService;
 class InventoryService
 {
     /**
-     * Phase 1: Pre-Submission logic strictly validating monthly limits and saving as pending.
+     * Phase 1: Pre-Submission logic with Smart Cart support.
+     * Validates monthly limits per-item, then creates 1 Donation + N ItemDonation records atomically.
+     *
+     * @param string|null $userId     Authenticated user UUID, null for guest donors.
+     * @param array       $donorData  ['donorName', 'donorEmail', 'donorPhone']
+     * @param array       $items      [['inventory_id' => UUID, 'qty' => int], ...]
+     * @return Donation
+     * @throws Exception
      */
-    public function submitPreSubmission(array $data)
+    public function submitPreSubmission(?string $userId, array $donorData, array $items): Donation
     {
-        // $data contains: donorName, donorEmail, donorPhone, inventory_id, qty, itemName_snapshot
         $monthlyLimit = 500; // Hardcoded fallback or env driven
-        
-        $currentMonthTotal = ItemDonation::where('inventory_id', $data['inventory_id'])
-            ->whereMonth('created_at', now()->month)
-            ->sum('qty');
 
-        if (($currentMonthTotal + $data['qty']) > $monthlyLimit) {
-            throw new Exception("Monthly limit exceeded for this item.");
+        // Validate monthly limits for EACH item before entering the transaction
+        foreach ($items as $item) {
+            $currentMonthTotal = ItemDonation::where('inventory_id', $item['inventory_id'])
+                ->whereMonth('created_at', now()->month)
+                ->sum('qty');
+
+            if (($currentMonthTotal + $item['qty']) > $monthlyLimit) {
+                $inventory = Inventory::find($item['inventory_id']);
+                throw new Exception(
+                    "Monthly limit exceeded for item: " . ($inventory?->itemName ?? $item['inventory_id'])
+                );
+            }
         }
 
-        return DB::transaction(function () use ($data) {
+        return DB::transaction(function () use ($userId, $donorData, $items) {
             $paymentService = app(PaymentService::class);
-            
+
             $donation = Donation::create([
-                'donorName'     => $data['donorName'],
-                'donorEmail'    => $data['donorEmail'],
-                'donorPhone'    => $data['donorPhone'],
+                'user_id'       => $userId,
+                'donorName'     => $donorData['donorName'],
+                'donorEmail'    => $donorData['donorEmail'],
+                'donorPhone'    => $donorData['donorPhone'],
                 'type'          => DonationTypeEnum::BARANG->value,
                 'status'        => DonationStatusEnum::PENDING_DELIVERY->value,
                 'tracking_code' => $paymentService->generateTrackingCode(),
             ]);
 
-            $donation->itemDonations()->create([
-                'inventory_id'      => $data['inventory_id'],
-                'itemName_snapshot' => $data['itemName_snapshot'],
-                'qty'               => $data['qty']
-            ]);
+            foreach ($items as $item) {
+                $inventory = Inventory::findOrFail($item['inventory_id']);
 
-            return $donation;
+                $donation->itemDonations()->create([
+                    'inventory_id'      => $item['inventory_id'],
+                    'itemName_snapshot' => $inventory->itemName,
+                    'qty'               => $item['qty'],
+                ]);
+            }
+
+            return $donation->load('itemDonations');
         });
     }
 

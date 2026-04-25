@@ -11,7 +11,36 @@ use Exception;
 class CapacityService
 {
     /**
+     * Creates a new visit request after validating initial capacity availability.
+     * Does NOT reserve a slot — reservation only happens upon approval via approveVisit().
+     *
+     * @param string $userId      Authenticated user UUID.
+     * @param string $capacityId  Target capacity slot UUID.
+     * @return Visit
+     * @throws Exception
+     */
+    public function createVisitRequest(string $userId, string $capacityId): Visit
+    {
+        $capacity = Capacity::find($capacityId);
+
+        if (!$capacity) {
+            throw new Exception("Capacity slot not found.");
+        }
+
+        if ($capacity->quota <= $capacity->booked) {
+            throw new Exception("Selected slot is fully booked.");
+        }
+
+        return Visit::create([
+            'user_id'     => $userId,
+            'capacity_id' => $capacityId,
+            'status'      => VisitStatusEnum::PENDING->value,
+        ]);
+    }
+
+    /**
      * Approves a visit while enforcing pessimistic locking to prevent race conditions.
+     * Uses capacity_id FK for direct lookup instead of date+slot composite query.
      *
      * @param Visit $visit
      * @return Visit
@@ -20,14 +49,13 @@ class CapacityService
     public function approveVisit(Visit $visit): Visit
     {
         return DB::transaction(function () use ($visit) {
-            // Pessimistic Locking on the exact date and slot
-            $capacity = Capacity::where('date', $visit->date)
-                ->where('slot', $visit->slot)
+            // Pessimistic Locking via capacity_id FK (direct lookup)
+            $capacity = Capacity::where('id', $visit->capacity_id)
                 ->lockForUpdate()
                 ->first();
 
             if (!$capacity) {
-                throw new Exception("Capacity not configured for this date and slot.");
+                throw new Exception("Capacity not configured for this visit.");
             }
 
             if ($capacity->quota <= $capacity->booked) {
