@@ -1,0 +1,48 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use App\Enums\DonationStatusEnum;
+use App\Enums\DonationTypeEnum;
+use App\Models\ItemDonation;
+use App\Models\User;
+
+class Donation extends Model
+{
+    use HasFactory, HasUuids;
+
+    protected $fillable = [
+        'user_id',
+        'donorName',
+        'donorEmail',
+        'donorPhone',
+        'type',
+        'amount',
+        'status',
+        'tracking_code',
+    ];
+
+    protected $casts = [
+        'status' => DonationStatusEnum::class,
+        'type' => DonationTypeEnum::class,
+        'amount' => 'decimal:2',
+    ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function itemDonations()
+    {
+        return $this->hasMany(ItemDonation::class);
+    }
+
+    public function rejectedLogs()
+    {
+        return $this->hasMany(RejectedLog::class);
+    }
+}
