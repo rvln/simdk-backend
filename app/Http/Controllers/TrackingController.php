@@ -2,32 +2,32 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Donation;
+use App\Services\PaymentService;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class TrackingController extends Controller
 {
-    public function trackDonation($tracking_code)
+    public function __construct(private PaymentService $paymentService) {}
+
+    /**
+     * GET /api/tracking/{tracking_code}
+     * Public endpoint for tracking donation status.
+     * Delegates to PaymentService which returns a limited DTO per SRS NFR-04.
+     */
+    public function trackDonation(string $tracking_code)
     {
-        $donation = Donation::where('tracking_code', $tracking_code)->first();
+        try {
+            $trackingData = $this->paymentService->getPublicTrackingData($tracking_code);
 
-        if (!$donation) {
             return response()->json([
-                'status' => 'error',
-                'message' => 'Data tidak ditemukan'
-            ], 404);
+                'status' => 'success',
+                'data'   => $trackingData,
+            ]);
+        } catch (HttpException $e) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => $e->getMessage(),
+            ], $e->getStatusCode());
         }
-
-        // Return Data limited map explicitly as mapped out within NFR-04
-        return response()->json([
-            'status' => 'success',
-            'data' => [
-                'tracking_code' => $donation->tracking_code,
-                'transaction_date' => $donation->created_at,
-                'payment_status' => $donation->status,
-                'type' => $donation->type,
-                // A complete system would pull Distribution state if applicable.
-                'distribution_status' => 'pending' 
-            ]
-        ]);
     }
 }

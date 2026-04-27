@@ -7,25 +7,19 @@ use App\Http\Requests\LoginRequest;
 use App\Http\Requests\VerifyEmailRequest;
 use App\Http\Requests\ResendVerificationRequest;
 use App\Services\UserService;
-use App\Models\User;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class AuthController extends Controller
 {
     public function __construct(private UserService $userService) {}
 
+    /**
+     * POST /register
+     * Delegates user creation entirely to UserService.
+     */
     public function register(RegisterRequest $request)
     {
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
-
-        // A realistic flow would trigger email inside an event.
-        // For simplicity, we just generate the token via UserService here.
-        $this->userService->generateVerificationToken($user);
+        $user = $this->userService->registerUser($request->validated());
 
         return response()->json([
             'status' => 'success',
@@ -34,58 +28,72 @@ class AuthController extends Controller
         ], 201);
     }
 
+    /**
+     * POST /login
+     * Delegates credential validation and email_verified_at enforcement to UserService.
+     * Returns 403 if email is not verified (per AGENTS.md Authentication State Constraint).
+     */
     public function login(LoginRequest $request)
     {
-        $user = User::where('email', $request->email)->first();
+        try {
+            $result = $this->userService->attemptLogin(
+                $request->email,
+                $request->password,
+            );
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['Invalid credentials.'],
+            return response()->json([
+                'status' => 'success',
+                'data' => $result,
             ]);
-        }
-
-        if (!$user->email_verified_at) {
+        } catch (HttpException $e) {
             return response()->json([
                 'status' => 'error',
-                'code' => 403,
-                'message' => 'Email not verified.',
-            ], 403);
+                'code' => $e->getStatusCode(),
+                'message' => $e->getMessage(),
+            ], $e->getStatusCode());
         }
-
-        return response()->json([
-            'status' => 'success',
-            'data' => [
-                'token' => $user->createToken('auth_token')->plainTextToken,
-                'user' => $user,
-            ]
-        ]);
     }
 
+    /**
+     * POST /verify-email
+     * Delegates token-based verification to UserService.
+     * No mock data — evaluates the cryptographic token string from the request payload.
+     */
     public function verifyEmail(VerifyEmailRequest $request)
     {
-        // Simple mock mechanism. Normally would lookup token in DB.
-        $user = \Illuminate\Support\Facades\Auth::user() ?? User::first(); 
-        if(!$user) {
-           return response()->json(['status' => 'error'], 404);
+        try {
+            $this->userService->verifyEmailByToken($request->token);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Email verified successfully.'
+            ]);
+        } catch (HttpException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], $e->getStatusCode());
         }
-
-        $this->userService->verifyEmail($user);
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Email verified successfully.'
-        ]);
     }
 
+    /**
+     * POST /resend-verification
+     * Delegates the 3-step resend flow (invalidate → regenerate → dispatch) to UserService.
+     */
     public function resendVerification(ResendVerificationRequest $request)
     {
-        $user = User::where('email', $request->email)->first();
+        try {
+            $this->userService->resendVerificationEmail($request->email);
 
-        if ($user && !$user->email_verified_at) {
-            $this->userService->generateVerificationToken($user);
-            return response()->json(['status' => 'success', 'message' => 'Verification email sent.']);
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Verification email sent.',
+            ]);
+        } catch (HttpException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], $e->getStatusCode());
         }
-
-        return response()->json(['status' => 'error', 'message' => 'User already verified or not found.'], 400);
     }
 }

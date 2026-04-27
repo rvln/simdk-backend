@@ -18,6 +18,8 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->string('role')->default(\App\Enums\RoleEnum::PENGUNJUNG->value);
+            $table->string('verification_token')->nullable()->index();
+            $table->timestamp('verification_token_expires_at')->nullable();
             $table->rememberToken();
             $table->timestamps();
         });
