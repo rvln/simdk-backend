@@ -11,6 +11,7 @@ use App\Http\Controllers\DistributionController;
 use App\Http\Controllers\TrackingController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\DonationValidationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -60,4 +61,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Kelola Kebutuhan — Inventory Catalog CRUD (Pengurus & Kepala Panti only)
     // Role gate is enforced inside InventoryController::authorizeStaffRole()
     Route::apiResource('kebutuhan', InventoryController::class);
+
+    // Validasi Donasi — Check-in / Rejection (Pengurus & Kepala Panti only)
+    Route::get('/validasi-donasi', [DonationValidationController::class, 'index']);
+    Route::post('/validasi-donasi/{id}/approve', [DonationValidationController::class, 'approve']);
+    Route::post('/validasi-donasi/{id}/reject',  [DonationValidationController::class, 'reject']);
 });
