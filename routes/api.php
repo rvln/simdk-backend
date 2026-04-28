@@ -41,6 +41,11 @@ Route::middleware('auth:sanctum')->group(function () {
     // Auth — Token Revocation (G-01 Security Hotfix)
     Route::post('/logout', [AuthController::class, 'logout']);
 
+    // Auth — Fetch current user session (RBAC backbone)
+    Route::get('/user', function (\Illuminate\Http\Request $request) {
+        return response()->json(['data' => $request->user()]);
+    });
+
     // Visits (Pengunjung & Pengurus)
     Route::post('/visits', [VisitController::class, 'submitRequest']);
     Route::put('/admin/visits/{visit}/approve', [VisitController::class, 'approveRequest']);
