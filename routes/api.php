@@ -38,6 +38,9 @@ Route::get('/inventories', [InventoryController::class, 'index']);
 
 Route::middleware('auth:sanctum')->group(function () {
 
+    // Auth — Token Revocation (G-01 Security Hotfix)
+    Route::post('/logout', [AuthController::class, 'logout']);
+
     // Visits (Pengunjung & Pengurus)
     Route::post('/visits', [VisitController::class, 'submitRequest']);
     Route::put('/admin/visits/{visit}/approve', [VisitController::class, 'approveRequest']);

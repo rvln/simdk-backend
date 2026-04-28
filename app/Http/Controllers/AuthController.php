@@ -7,6 +7,7 @@ use App\Http\Requests\LoginRequest;
 use App\Http\Requests\VerifyEmailRequest;
 use App\Http\Requests\ResendVerificationRequest;
 use App\Services\UserService;
+use Illuminate\Http\Request;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class AuthController extends Controller
@@ -95,5 +96,20 @@ class AuthController extends Controller
                 'message' => $e->getMessage(),
             ], $e->getStatusCode());
         }
+    }
+
+    /**
+     * POST /logout
+     * Revokes the current Sanctum Personal Access Token, fully invalidating the session.
+     * Returns HTTP 204 No Content per REST convention for delete-like operations.
+     *
+     * Security Ref: SRS NFR-02 — Token must be completely destroyed upon logout.
+     * Audit Ref: G-01 — Sanctum Token Revocation hotfix.
+     */
+    public function logout(Request $request)
+    {
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->noContent(); // HTTP 204
     }
 }

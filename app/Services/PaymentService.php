@@ -71,8 +71,22 @@ class PaymentService
             throw new HttpException(400, 'Missing required webhook fields.');
         }
 
-        // Production: verify Midtrans signature hash
-        // $this->verifySignature($payload);
+        // Cryptographic Verification: SHA512 HMAC validation (G-02 Security Hotfix)
+        // Midtrans signs webhooks as: SHA512(order_id + status_code + gross_amount + server_key)
+        $signatureKey = $payload['signature_key'] ?? '';
+        $statusCode   = $payload['status_code'] ?? '';
+        $grossAmount  = $payload['gross_amount'] ?? '';
+        $serverKey    = config('midtrans.server_key');
+
+        $expectedSignature = hash('sha512', $orderId . $statusCode . $grossAmount . $serverKey);
+
+        if (!hash_equals($expectedSignature, $signatureKey)) {
+            Log::warning('Midtrans Webhook Signature Mismatch', [
+                'order_id' => $orderId,
+                'ip'       => request()->ip(),
+            ]);
+            throw new HttpException(403, 'Invalid webhook signature.');
+        }
 
         $donation = Donation::find($orderId);
 
@@ -96,8 +110,23 @@ class PaymentService
         if ($transactionStatus === 'settlement' || $transactionStatus === 'capture') {
             // Atomic Operation: status update + tracking_code generation must be indivisible
             // UML Ref: §SD-3 step 5 — BEGIN, generateCode(), update status+tracking_code, COMMIT
-            DB::transaction(function () use ($donation) {
-                $donation->update([
+            DB::transaction(function () use ($donation, $orderId) {
+                // Re-acquire with pessimistic lock to close the race-condition window
+                // between the outer idempotency check and this critical section.
+                $lockedDonation = Donation::where('id', $donation->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                // State Transition Guard (Anti-Replay / State Corruption Mitigation):
+                // Only PENDING donations may transition to SUCCESS.
+                // If a concurrent webhook already moved this to FAILED, EXPIRED,
+                // or SUCCESS, we MUST NOT overwrite that terminal state.
+                if ($lockedDonation->status->value !== DonationStatusEnum::PENDING->value) {
+                    Log::critical("State Transition Guard: Blocked illegal transition from {$lockedDonation->status->value} to SUCCESS for order_id={$orderId}.");
+                    return; // Acknowledge receipt without mutating — outer method returns true → HTTP 200
+                }
+
+                $lockedDonation->update([
                     'status'        => DonationStatusEnum::SUCCESS->value,
                     'tracking_code' => $this->generateTrackingCode(),
                 ]);
