@@ -233,6 +233,92 @@ class InventoryService
     }
 
     /**
+     * Retrieve all inventory catalog items for the Kelola Kebutuhan dashboard.
+     * Returns the full row so the frontend can display progress (stock vs target_qty).
+     *
+     * @return array  List of all inventory items as arrays.
+     */
+    public function getAllInventories(): array
+    {
+        return Inventory::select('id', 'itemName', 'category', 'stock', 'target_qty', 'unit', 'description')
+            ->orderBy('category')
+            ->orderBy('itemName')
+            ->get()
+            ->toArray();
+    }
+
+    /**
+     * Create a new inventory catalog item.
+     * stock MUST NOT be supplied here — it is managed exclusively by checkInItem().
+     *
+     * @param array $data  ['itemName', 'category', 'target_qty', 'unit', 'description']
+     * @return Inventory
+     */
+    public function createInventory(array $data): Inventory
+    {
+        return DB::transaction(function () use ($data) {
+            return Inventory::create([
+                'itemName'    => $data['itemName'],
+                'category'    => $data['category'],
+                'target_qty'  => $data['target_qty'],
+                'unit'        => $data['unit'],
+                'description' => $data['description'] ?? null,
+                // stock is intentionally omitted — defaults to 0 via migration
+            ]);
+        });
+    }
+
+    /**
+     * Update an existing inventory catalog item.
+     * stock MUST NOT be updated through this method.
+     *
+     * @param string $id    UUID of the inventory item.
+     * @param array  $data  Partial or full update payload.
+     * @return Inventory
+     */
+    public function updateInventory(string $id, array $data): Inventory
+    {
+        return DB::transaction(function () use ($id, $data) {
+            $inventory = Inventory::findOrFail($id);
+
+            // Invariant guard: target_qty must never fall below the already-collected stock.
+            // Use array_key_exists (not isset) so an explicit null in $data is also caught.
+            if (array_key_exists('target_qty', $data) && $data['target_qty'] < $inventory->stock) {
+                throw new HttpException(
+                    422,
+                    'Target kuantitas tidak boleh lebih kecil dari stok yang sudah terkumpul.'
+                );
+            }
+
+            // Explicitly whitelist updatable fields — stock is excluded
+            $inventory->update(array_filter([
+                'itemName'    => $data['itemName']    ?? null,
+                'category'    => $data['category']    ?? null,
+                'target_qty'  => $data['target_qty']  ?? null,
+                'unit'        => $data['unit']         ?? null,
+                'description' => $data['description']  ?? null,
+            ], fn($v) => $v !== null));
+
+            return $inventory->fresh();
+        });
+    }
+
+    /**
+     * Delete an inventory catalog item.
+     * Protected by findOrFail to return 404 instead of silent no-op.
+     *
+     * @param string $id  UUID of the inventory item.
+     * @return void
+     */
+    public function deleteInventory(string $id): void
+    {
+        DB::transaction(function () use ($id) {
+            $inventory = Inventory::findOrFail($id);
+            $inventory->delete();
+        });
+    }
+
+    /**
      * Dispatch an acceptance notification to the donor asynchronously (fire-and-forget).
      * Triggered after a successful item check-in.
      *

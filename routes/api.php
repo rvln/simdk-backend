@@ -28,7 +28,7 @@ Route::post('/donations/items', [DonationController::class, 'submitItemDonation'
 Route::post('/webhooks/midtrans', [WebhookController::class, 'handleMidtransWebhook']);
 
 Route::get('/tracking/{tracking_code}', [TrackingController::class, 'trackDonation']);
-Route::get('/inventories', [InventoryController::class, 'index']);
+Route::get('/inventories', [InventoryController::class, 'publicIndex']);
 
 /*
 |--------------------------------------------------------------------------
@@ -56,4 +56,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Reporting (Kepala Panti)
     Route::get('/reports', [ReportController::class, 'requestReport']);
+
+    // Kelola Kebutuhan — Inventory Catalog CRUD (Pengurus & Kepala Panti only)
+    // Role gate is enforced inside InventoryController::authorizeStaffRole()
+    Route::apiResource('kebutuhan', InventoryController::class);
 });
