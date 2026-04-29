@@ -15,6 +15,8 @@ class Visit extends Model
         'user_id',
         'capacity_id',
         'status',
+        'confirmed_time',
+        'rejection_reason',
     ];
 
     protected $casts = [
