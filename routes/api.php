@@ -55,7 +55,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/visits', [VisitController::class, 'submitRequest']);
 
     // Visit Approval Domain (Pengurus & Kepala Panti)
-    Route::get('/kunjungan/pending', [\App\Http\Controllers\VisitApprovalController::class, 'getPending']);
+    Route::get('/kunjungan/manage', [\App\Http\Controllers\VisitApprovalController::class, 'index']);
     Route::post('/kunjungan/{id}/approve', [\App\Http\Controllers\VisitApprovalController::class, 'approve']);
     Route::post('/kunjungan/{id}/reject', [\App\Http\Controllers\VisitApprovalController::class, 'reject']);
     Route::post('/kunjungan/{id}/request-reschedule', [\App\Http\Controllers\VisitApprovalController::class, 'requestReschedule']);

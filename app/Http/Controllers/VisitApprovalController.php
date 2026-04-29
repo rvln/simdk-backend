@@ -25,10 +25,13 @@ class VisitApprovalController extends Controller
         $this->visitService = $visitService;
     }
 
-    public function getPending(Request $request): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         $this->authorizeStaffRole($request);
-        $visits = $this->visitService->getPendingVisits();
+        
+        $filters = $request->only(['search', 'date', 'status']);
+        $visits = $this->visitService->getVisits($filters);
+        
         return response()->json(['data' => $visits]);
     }
 

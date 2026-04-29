@@ -11,14 +11,30 @@ use Illuminate\Validation\ValidationException;
 class VisitService
 {
     /**
-     * Fetch all pending visits eager loaded with user and capacity.
+     * Fetch visits eager loaded with user and capacity, with dynamic filters.
+     * Filters: status (string), date (string YYYY-MM-DD), search (string).
      */
-    public function getPendingVisits()
+    public function getVisits(array $filters = [])
     {
-        return Visit::with(['user', 'capacity'])
-            ->where('status', VisitStatusEnum::PENDING)
-            ->orderBy('created_at', 'asc')
-            ->get();
+        $query = Visit::with(['user', 'capacity']);
+
+        if (!empty($filters['status']) && $filters['status'] !== 'ALL') {
+            $query->where('status', $filters['status']);
+        } elseif (empty($filters['status']))
+
+        if (!empty($filters['date'])) {
+            $query->whereHas('capacity', function ($q) use ($filters) {
+                $q->where('date', $filters['date']);
+            });
+        }
+
+        if (!empty($filters['search'])) {
+    $query->whereHas('user', function ($q) use ($filters) {
+        $q->where('name', 'LIKE', '%' . $filters['search'] . '%');
+    });
+}
+
+        return $query->orderBy('created_at', 'desc')->get();
     }
 
     /**
