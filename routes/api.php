@@ -47,6 +47,9 @@ Route::middleware('auth:sanctum')->group(function () {
         return response()->json(['data' => $request->user()]);
     });
 
+    // Dashboard BFF
+    Route::get('/dashboard/overview', [\App\Http\Controllers\DashboardController::class, 'getOverview']);
+
     // Visits (Pengunjung & Pengurus)
     Route::post('/visits', [VisitController::class, 'submitRequest']);
 
