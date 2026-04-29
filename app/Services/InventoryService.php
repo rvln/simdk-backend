@@ -170,6 +170,23 @@ class InventoryService
     }
 
     /**
+     * Retrieve all distribution records for the dashboard history view.
+     * Eager loads the associated Inventory item and the User who logged the entry.
+     *
+     * AGENTS.md §3: target_recipient and notes are mandatory audit fields;
+     * they are present on every Distribution row.
+     *
+     * @return array  All distributions ordered newest-first.
+     */
+    public function getAllDistributions(): array
+    {
+        return Distribution::with(['inventory', 'user'])
+            ->orderBy('distributed_at', 'desc')
+            ->get()
+            ->toArray();
+    }
+
+    /**
      * Record a distribution with atomic stock deduction.
      * Enforces auditability by requiring target_recipient and notes.
      *

@@ -1,0 +1,133 @@
+[
+{"type":"header","version":"5.2.2","comment":"Export to JSON plugin for PHPMyAdmin"},
+{"type":"database","name":"simdk"},
+{"type":"table","name":"cache","database":"simdk","data":
+[
+
+]
+}
+,{"type":"table","name":"cache_locks","database":"simdk","data":
+[
+
+]
+}
+,{"type":"table","name":"capacities","database":"simdk","data":
+[
+{"id":"019dce61-8372-705e-b421-8c1912725c47","date":"2026-04-27","slot":"MORNING","quota":"5","booked":"0","created_at":"2026-04-27 09:59:50","updated_at":"2026-04-27 09:59:50"},
+{"id":"019dce61-8379-725f-bccd-5e434a17f7b4","date":"2026-04-27","slot":"AFTERNOON","quota":"5","booked":"0","created_at":"2026-04-27 09:59:50","updated_at":"2026-04-27 09:59:50"},
+{"id":"019dce61-837d-7022-8ffc-c8cabc61c724","date":"2026-04-28","slot":"MORNING","quota":"5","booked":"0","created_at":"2026-04-27 09:59:50","updated_at":"2026-04-27 09:59:50"},
+{"id":"019dce61-8383-70e1-bc7c-f8541dd09beb","date":"2026-04-28","slot":"AFTERNOON","quota":"5","booked":"0","created_at":"2026-04-27 09:59:50","updated_at":"2026-04-27 09:59:50"},
+{"id":"019dce61-8387-710b-bd34-d3f661744ad0","date":"2026-04-29","slot":"MORNING","quota":"5","booked":"0","created_at":"2026-04-27 09:59:50","updated_at":"2026-04-27 09:59:50"},
+{"id":"019dce61-838b-7076-a69b-864c4d5cf5cd","date":"2026-04-29","slot":"AFTERNOON","quota":"5","booked":"0","created_at":"2026-04-27 09:59:50","updated_at":"2026-04-27 09:59:50"},
+{"id":"019dce61-8390-7252-80e9-7301b3dfaa77","date":"2026-04-30","slot":"MORNING","quota":"5","booked":"0","created_at":"2026-04-27 09:59:50","updated_at":"2026-04-27 09:59:50"},
+{"id":"019dce61-8394-734b-bedc-7243fb5e7af0","date":"2026-04-30","slot":"AFTERNOON","quota":"5","booked":"0","created_at":"2026-04-27 09:59:50","updated_at":"2026-04-27 09:59:50"},
+{"id":"019dce61-8398-7023-9d18-6b5841fc1eed","date":"2026-05-01","slot":"MORNING","quota":"5","booked":"0","created_at":"2026-04-27 09:59:50","updated_at":"2026-04-27 09:59:50"},
+{"id":"019dce61-839c-7391-9984-f5ff3e0db4c9","date":"2026-05-01","slot":"AFTERNOON","quota":"5","booked":"0","created_at":"2026-04-27 09:59:50","updated_at":"2026-04-27 09:59:50"},
+{"id":"019dce61-83a2-7055-907e-00dbdaf1821f","date":"2026-05-02","slot":"MORNING","quota":"5","booked":"0","created_at":"2026-04-27 09:59:50","updated_at":"2026-04-27 09:59:50"},
+{"id":"019dce61-83a6-715b-b0f2-fe8833099850","date":"2026-05-02","slot":"AFTERNOON","quota":"5","booked":"0","created_at":"2026-04-27 09:59:50","updated_at":"2026-04-27 09:59:50"},
+{"id":"019dce61-83aa-7001-9d15-8febb0c89c33","date":"2026-05-03","slot":"MORNING","quota":"5","booked":"0","created_at":"2026-04-27 09:59:50","updated_at":"2026-04-27 09:59:50"},
+{"id":"019dce61-83ae-70b4-bf9a-12dfc424b013","date":"2026-05-03","slot":"AFTERNOON","quota":"5","booked":"0","created_at":"2026-04-27 09:59:50","updated_at":"2026-04-27 09:59:50"}
+]
+}
+,{"type":"table","name":"distributions","database":"simdk","data":
+[
+{"id":"019dd5dd-a6f0-7354-a1a4-0b66c12f5773","inventory_id":"019dce61-835b-70a5-82b6-4a158f401514","user_id":"019dce61-7bc0-7067-83ca-8455caa70c4c","qty":"50","target_recipient":"Dapur Asrama Putra","notes":"Pembagian Buku","distributed_at":"2026-04-28 20:52:44","created_at":"2026-04-28 20:52:46","updated_at":"2026-04-28 20:52:46"}
+]
+}
+,{"type":"table","name":"donations","database":"simdk","data":
+[
+{"id":"test-donasi-001","user_id":null,"donorName":"Hamba Allah","donorEmail":"hamba@email.com","donorPhone":"08111222333","type":"BARANG","amount":null,"status":"SUCCESS","tracking_code":"TXN-DON-001","created_at":"2026-04-29 01:43:35","updated_at":"2026-04-28 17:49:01"},
+{"id":"test-donasi-002","user_id":null,"donorName":"Budi Santoso","donorEmail":"budi@email.com","donorPhone":"08999888777","type":"BARANG","amount":null,"status":"REJECTED","tracking_code":"TXN-DON-002","created_at":"2026-04-29 01:44:53","updated_at":"2026-04-28 17:50:05"},
+{"id":"test-donasi-003","user_id":null,"donorName":"Yayasan Peduli Kasih","donorEmail":"info@pedulikasih.org","donorPhone":"08122334455","type":"BARANG","amount":null,"status":"SUCCESS","tracking_code":"TXN-DON-003","created_at":"2026-04-29 03:07:12","updated_at":"2026-04-28 19:17:21"},
+{"id":"test-donasi-004","user_id":null,"donorName":"Ibu Ratna","donorEmail":"ratna@email.com","donorPhone":"08555666777","type":"BARANG","amount":null,"status":"PENDING_DELIVERY","tracking_code":"TXN-DON-004","created_at":"2026-04-29 03:13:15","updated_at":"2026-04-29 03:13:15"}
+]
+}
+,{"type":"table","name":"failed_jobs","database":"simdk","data":
+[
+
+]
+}
+,{"type":"table","name":"inventories","database":"simdk","data":
+[
+{"id":"019dce61-834f-7234-86be-f1ccc80a1a34","itemName":"Beras","category":"MAKANAN","stock":"100","target_qty":"100","unit":"Kg","description":"Beras putih untuk kebutuhan makan harian anak-anak panti.","created_at":"2026-04-27 09:59:50","updated_at":"2026-04-28 19:17:21"},
+{"id":"019dce61-8357-7236-830a-88d717e96d7a","itemName":"Susu Kotak","category":"MAKANAN","stock":"30","target_qty":"80","unit":"Dus","description":"Susu UHT kemasan kotak untuk asupan gizi harian.","created_at":"2026-04-27 09:59:50","updated_at":"2026-04-27 09:59:50"},
+{"id":"019dce61-835b-70a5-82b6-4a158f401514","itemName":"Buku Tulis","category":"PENDIDIKAN","stock":"190","target_qty":"200","unit":"pcs","description":"Buku tulis 58 lembar untuk keperluan sekolah.","created_at":"2026-04-27 09:59:50","updated_at":"2026-04-28 20:52:44"},
+{"id":"019dce61-8361-72c6-a4d7-f6aa83800309","itemName":"Pakaian Anak","category":"PAKAIAN","stock":"20","target_qty":"50","unit":"pcs","description":"Pakaian layak pakai untuk anak usia 6-12 tahun.","created_at":"2026-04-27 09:59:50","updated_at":"2026-04-28 19:17:21"},
+{"id":"019dce61-8365-7120-978e-0269c8446727","itemName":"Sabun Mandi","category":"KEBERSIHAN","stock":"40","target_qty":"60","unit":"pcs","description":"Sabun batang untuk kebersihan diri anak-anak.","created_at":"2026-04-27 09:59:50","updated_at":"2026-04-27 09:59:50"},
+{"id":"019dd3b9-c702-72b3-a70c-3d18241d9f9f","itemName":"Buku Gambar","category":"PENDIDIKAN","stock":"10","target_qty":"30","unit":"Pcs","description":null,"created_at":"2026-04-28 10:54:21","updated_at":"2026-04-28 17:49:01"}
+]
+}
+,{"type":"table","name":"item_donations","database":"simdk","data":
+[
+{"id":"test-item-001","donation_id":"test-donasi-001","inventory_id":"019dd3b9-c702-72b3-a70c-3d18241d9f9f","itemName_snapshot":"Barang Uji Coba 1","qty":"10","created_at":"2026-04-29 01:44:25","updated_at":"2026-04-29 01:44:25"},
+{"id":"test-item-002","donation_id":"test-donasi-002","inventory_id":"019dd3b9-c702-72b3-a70c-3d18241d9f9f","itemName_snapshot":"Barang Uji Coba 2","qty":"5","created_at":"2026-04-29 01:45:50","updated_at":"2026-04-29 01:45:50"},
+{"id":"test-item-003-A","donation_id":"test-donasi-003","inventory_id":"019dce61-834f-7234-86be-f1ccc80a1a34","itemName_snapshot":"Beras Putih Premium","qty":"50","created_at":"2026-04-29 03:09:23","updated_at":"2026-04-29 03:09:23"},
+{"id":"test-item-003-B","donation_id":"test-donasi-003","inventory_id":"019dce61-835b-70a5-82b6-4a158f401514","itemName_snapshot":"Buku Tulis Sinar Dunia","qty":"120","created_at":"2026-04-29 03:11:30","updated_at":"2026-04-29 03:11:30"},
+{"id":"test-item-003-C","donation_id":"test-donasi-003","inventory_id":"019dce61-8361-72c6-a4d7-f6aa83800309","itemName_snapshot":"Pakaian Layak Pakai (Dus)","qty":"5","created_at":"2026-04-29 03:12:44","updated_at":"2026-04-29 03:12:44"},
+{"id":"test-item-004","donation_id":"test-donasi-004","inventory_id":"019dce61-8357-7236-830a-88d717e96d7a","itemName_snapshot":"Susu Formula Bayi","qty":"15","created_at":"2026-04-29 03:14:16","updated_at":"2026-04-29 03:14:16"}
+]
+}
+,{"type":"table","name":"jobs","database":"simdk","data":
+[
+
+]
+}
+,{"type":"table","name":"job_batches","database":"simdk","data":
+[
+
+]
+}
+,{"type":"table","name":"migrations","database":"simdk","data":
+[
+{"id":"1","migration":"0001_01_01_000000_create_users_table","batch":"1"},
+{"id":"2","migration":"0001_01_01_000001_create_cache_table","batch":"1"},
+{"id":"3","migration":"0001_01_01_000002_create_jobs_table","batch":"1"},
+{"id":"4","migration":"0001_01_01_000003_create_capacities_table","batch":"1"},
+{"id":"5","migration":"0001_01_01_000004_create_inventories_table","batch":"1"},
+{"id":"6","migration":"0001_01_01_000005_create_donations_table","batch":"1"},
+{"id":"7","migration":"0001_01_01_000006_create_visits_table","batch":"1"},
+{"id":"8","migration":"0001_01_01_000007_create_item_donations_table","batch":"1"},
+{"id":"9","migration":"0001_01_01_000008_create_rejected_logs_table","batch":"1"},
+{"id":"10","migration":"0001_01_01_000009_create_distributions_table","batch":"1"},
+{"id":"11","migration":"2026_04_15_094441_create_personal_access_tokens_table","batch":"1"}
+]
+}
+,{"type":"table","name":"password_reset_tokens","database":"simdk","data":
+[
+
+]
+}
+,{"type":"table","name":"personal_access_tokens","database":"simdk","data":
+[
+{"id":"1","tokenable_type":"App\\Models\\User","tokenable_id":"019dce61-810f-70ac-bb5f-32e82308f8bb","name":"auth_token","token":"7a2aeac2d03ba6bf1cd0418ee4305724a0defbb155d16360809bb323b48c95d6","abilities":"[\"*\"]","last_used_at":"2026-04-27 10:17:02","expires_at":null,"created_at":"2026-04-27 10:16:06","updated_at":"2026-04-27 10:17:02"},
+{"id":"2","tokenable_type":"App\\Models\\User","tokenable_id":"019dce61-810f-70ac-bb5f-32e82308f8bb","name":"auth_token","token":"b0fb5be4353e72aa32021a7b430742f94cba613ed6803594c37f842fbe3bd5ea","abilities":"[\"*\"]","last_used_at":"2026-04-27 10:33:16","expires_at":null,"created_at":"2026-04-27 10:32:47","updated_at":"2026-04-27 10:33:16"},
+{"id":"3","tokenable_type":"App\\Models\\User","tokenable_id":"019dce61-810f-70ac-bb5f-32e82308f8bb","name":"auth_token","token":"936b86b03c6d172ddf174b997b83ba5e427bf4c7dba5d8aafa4dc4db4bf5abeb","abilities":"[\"*\"]","last_used_at":null,"expires_at":null,"created_at":"2026-04-27 15:41:38","updated_at":"2026-04-27 15:41:38"},
+{"id":"13","tokenable_type":"App\\Models\\User","tokenable_id":"019dce61-7bc0-7067-83ca-8455caa70c4c","name":"auth_token","token":"7b3d58d580cee93ccbd68a6f001b689c585f09faddd6a216d4dc31bcd69b4c3d","abilities":"[\"*\"]","last_used_at":"2026-04-28 10:56:12","expires_at":null,"created_at":"2026-04-28 10:53:21","updated_at":"2026-04-28 10:56:12"},
+{"id":"18","tokenable_type":"App\\Models\\User","tokenable_id":"019dce61-7bc0-7067-83ca-8455caa70c4c","name":"auth_token","token":"7a51f55700a840afa5b9fad1efd3cf212c27d0ad6a532f023cf01925243bb101","abilities":"[\"*\"]","last_used_at":"2026-04-28 17:50:08","expires_at":null,"created_at":"2026-04-28 17:27:28","updated_at":"2026-04-28 17:50:08"},
+{"id":"19","tokenable_type":"App\\Models\\User","tokenable_id":"019dce61-7bc0-7067-83ca-8455caa70c4c","name":"auth_token","token":"79996f2e28d902ef68431eca47003e758ae6f64ac08cec17b4fcfde593d0c6cd","abilities":"[\"*\"]","last_used_at":"2026-04-28 21:06:45","expires_at":null,"created_at":"2026-04-28 19:04:30","updated_at":"2026-04-28 21:06:45"}
+]
+}
+,{"type":"table","name":"rejected_logs","database":"simdk","data":
+[
+{"id":"019dd536-6df1-7167-bf3d-cae69127dc78","donation_id":"test-donasi-002","itemName":"Barang Uji Coba 2","reason":"Barang Sudah Kadaluarsa","logged_by":"019dce61-7bc0-7067-83ca-8455caa70c4c","created_at":"2026-04-28 17:50:07","updated_at":"2026-04-28 17:50:07"}
+]
+}
+,{"type":"table","name":"sessions","database":"simdk","data":
+[
+
+]
+}
+,{"type":"table","name":"users","database":"simdk","data":
+[
+{"id":"019dce61-7bc0-7067-83ca-8455caa70c4c","name":"Admin Pengurus","email":"admin@empanti.com","email_verified_at":"2026-04-27 09:59:45","password":"$2y$12$ebP.rqJ0ziA\/VF\/ktY\/0e.xYPzxynC1huaOQ6bKEc.xMFw6h54kbO","role":"PENGURUS_PANTI","verification_token":null,"verification_token_expires_at":null,"remember_token":null,"created_at":"2026-04-27 09:59:48","updated_at":"2026-04-27 09:59:48"},
+{"id":"019dce61-7e74-7060-900c-79a6f7ce1cae","name":"Dr. Lucas (Kepala)","email":"kepala@empanti.com","email_verified_at":"2026-04-27 09:59:49","password":"$2y$12$JE0LUYDremXkmZdVFxtIAelWkT\/xSoF23p.I5rO\/T4Q24pFgsYwgq","role":"KEPALA_PANTI","verification_token":null,"verification_token_expires_at":null,"remember_token":null,"created_at":"2026-04-27 09:59:49","updated_at":"2026-04-27 09:59:49"},
+{"id":"019dce61-810f-70ac-bb5f-32e82308f8bb","name":"Budi Santoso","email":"budi@example.com","email_verified_at":"2026-04-27 09:59:49","password":"$2y$12$r320A1JGAnjySXcMM5r08uop0Uv6UMStvNOTK5XR\/v46X\/QxsOJTe","role":"PENGUNJUNG","verification_token":null,"verification_token_expires_at":null,"remember_token":null,"created_at":"2026-04-27 09:59:49","updated_at":"2026-04-27 09:59:49"},
+{"id":"019dce61-8341-7365-99aa-db18b4997ed1","name":"Siti Aminah","email":"siti@example.com","email_verified_at":null,"password":"$2y$12$iLho8XLAyi5TRfLfkLYcF.OSfFtBXdnTmvXW9GoVxSxWCpXemRJ6m","role":"PENGUNJUNG","verification_token":null,"verification_token_expires_at":null,"remember_token":null,"created_at":"2026-04-27 09:59:50","updated_at":"2026-04-27 09:59:50"}
+]
+}
+,{"type":"table","name":"visits","database":"simdk","data":
+[
+
+]
+}
+]

@@ -53,7 +53,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Inventory & Distribution (Pengurus)
     Route::put('/admin/donations/items/{donation}/check-in', [ItemDonationController::class, 'processCheckIn']);
-    Route::post('/admin/distributions', [DistributionController::class, 'submitDistribution']);
+    Route::post('/admin/distributions', [DistributionController::class, 'submitDistribution']); // Legacy
+
+    // Distribusi Dashboard (Pengurus & Kepala Panti only)
+    // Role gate enforced inside DistributionController::authorizeStaffRole()
+    Route::get('/distribusi',  [DistributionController::class, 'index']);
+    Route::post('/distribusi', [DistributionController::class, 'store']);
 
     // Reporting (Kepala Panti)
     Route::get('/reports', [ReportController::class, 'requestReport']);
