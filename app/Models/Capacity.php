@@ -16,11 +16,13 @@ class Capacity extends Model
         'slot',
         'quota',
         'booked',
+        'is_active',
     ];
 
     protected $casts = [
         'date' => 'date',
         'slot' => TimeSlotEnum::class,
+        'is_active' => 'boolean',
     ];
 
     public function visits()
