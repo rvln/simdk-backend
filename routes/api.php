@@ -31,6 +31,7 @@ Route::post('/webhooks/midtrans', [WebhookController::class, 'handleMidtransWebh
 Route::get('/tracking/{tracking_code}', [TrackingController::class, 'trackDonation']);
 Route::get('/inventories', [InventoryController::class, 'publicIndex']);
 Route::get('/capacities', [\App\Http\Controllers\CapacityController::class, 'index']);
+Route::get('/public/katalog-kebutuhan', [InventoryController::class, 'getPublicCatalog']);
 
 /*
 |--------------------------------------------------------------------------

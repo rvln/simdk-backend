@@ -12,17 +12,37 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 class DonationValidationService
 {
     /**
-     * Retrieve all donations pending physical delivery for the check-in queue.
+     * Retrieve donations with dynamic filtering.
      * Eager loads itemDonations → inventory so the frontend can render item details.
      *
      * @return \Illuminate\Database\Eloquent\Collection
      */
-    public function getPendingDonations()
+    public function getDonations(array $filters = [])
     {
-        return Donation::with(['itemDonations.inventory'])
-            ->where('status', DonationStatusEnum::PENDING_DELIVERY->value)
-            ->orderBy('created_at', 'asc')
-            ->get();
+        $query = Donation::with(['itemDonations.inventory']);
+
+        if (!empty($filters['type'])) {
+            $query->where('type', $filters['type']);
+        }
+
+        if (!empty($filters['status']) && $filters['status'] !== 'ALL') {
+            $query->where('status', $filters['status']);
+        } elseif (empty($filters['status'])) {
+            $query->where('status', DonationStatusEnum::PENDING_DELIVERY->value);
+        }
+
+        if (!empty($filters['search'])) {
+            $query->where(function ($q) use ($filters) {
+                $q->where('tracking_code', 'LIKE', '%' . $filters['search'] . '%')
+                  ->orWhere('donorName', 'LIKE', '%' . $filters['search'] . '%');
+            });
+        }
+
+        $query->when(!empty($filters['date']), function ($q) use ($filters) {
+            $q->whereDate('created_at', $filters['date']);
+        });
+
+        return $query->orderBy('created_at', 'desc')->get();
     }
 
     /**

@@ -35,7 +35,8 @@ class DonationValidationController extends Controller
         $this->authorizeStaffRole($request);
 
         try {
-            $donations = $this->service->getPendingDonations();
+            $filters = $request->only(['search', 'status', 'type', 'date']);
+            $donations = $this->service->getDonations($filters);
 
             return response()->json([
                 'status' => 'success',

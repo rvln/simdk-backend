@@ -52,6 +52,33 @@ class InventoryController extends Controller
     }
 
     /**
+     * GET /api/public/katalog-kebutuhan
+     * Public endpoint: returns inventory catalog with target_qty > stock.
+     */
+    public function getPublicCatalog()
+    {
+        try {
+            $inventories = \App\Models\Inventory::whereColumn('target_qty', '>', 'stock')
+                ->select(['id', 'itemName', 'category', 'stock', 'target_qty', 'unit'])
+                ->get()
+                ->map(function ($item) {
+                    $item->remaining_need = $item->target_qty - $item->stock;
+                    return $item;
+                });
+
+            return response()->json([
+                'status' => 'success',
+                'data'   => $inventories,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Gagal memuat katalog kebutuhan.',
+            ], 500);
+        }
+    }
+
+    /**
      * GET /api/kebutuhan
      * Protected: returns full inventory list for the Kelola Kebutuhan dashboard.
      * Includes stock + target_qty so the frontend can compute progress.
