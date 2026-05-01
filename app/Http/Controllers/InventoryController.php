@@ -60,7 +60,7 @@ class InventoryController extends Controller
         try {
             $inventories = \App\Models\Inventory::all()
                 ->map(function ($item) {
-                    $item->remaining_need = max(0, $item->target_qty - $item->terkumpul_bulan_ini);
+                    $item->remaining_need = max(0, $item->target_qty - $item->stock);
                     return $item;
                 });
 

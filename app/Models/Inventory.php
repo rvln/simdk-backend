@@ -48,12 +48,12 @@ class Inventory extends Model
 
     public function getStatusKebutuhanAttribute()
     {
-        return $this->terkumpul_bulan_ini >= $this->target_qty ? 'TERPENUHI' : 'SEDANG BERLANGSUNG';
+        return $this->stock >= $this->target_qty ? 'TERPENUHI' : 'SEDANG BERLANGSUNG';
     }
 
     public function getIsDisabledAttribute()
     {
-        return $this->status_kebutuhan === 'TERPENUHI';
+        return $this->stock >= $this->target_qty;
     }
 
     public function getNextAvailableDateAttribute()
