@@ -242,8 +242,7 @@ class InventoryService
      */
     public function getPublicInventoryList(): array
     {
-        return Inventory::select('id', 'itemName', 'category', 'stock', 'target_qty', 'unit', 'description')
-            ->orderBy('category')
+        return Inventory::orderBy('category')
             ->orderBy('itemName')
             ->get()
             ->toArray();
@@ -255,13 +254,29 @@ class InventoryService
      *
      * @return array  List of all inventory items as arrays.
      */
-    public function getAllInventories(): array
+    public function getAllInventories(array $filters = []): array
     {
-        return Inventory::select('id', 'itemName', 'category', 'stock', 'target_qty', 'unit', 'description')
-            ->orderBy('category')
-            ->orderBy('itemName')
-            ->get()
-            ->toArray();
+        $query = Inventory::query();
+
+        if (!empty($filters['search'])) {
+            $query->where('itemName', 'like', '%' . $filters['search'] . '%');
+        }
+        if (!empty($filters['category'])) {
+            $query->where('category', $filters['category']);
+        }
+        if (!empty($filters['priority'])) {
+            $query->where('priority', $filters['priority']);
+        }
+
+        $items = $query->orderBy('category')->orderBy('itemName')->get();
+
+        if (!empty($filters['status_kebutuhan'])) {
+            $items = $items->filter(function($item) use ($filters) {
+                return $item->status_kebutuhan === $filters['status_kebutuhan'];
+            });
+        }
+
+        return $items->values()->toArray();
     }
 
     /**
@@ -277,6 +292,7 @@ class InventoryService
             return Inventory::create([
                 'itemName'    => $data['itemName'],
                 'category'    => $data['category'],
+                'priority'    => $data['priority'] ?? 'OPSIONAL',
                 'target_qty'  => $data['target_qty'],
                 'unit'        => $data['unit'],
                 'description' => $data['description'] ?? null,
@@ -311,6 +327,7 @@ class InventoryService
             $inventory->update(array_filter([
                 'itemName'    => $data['itemName']    ?? null,
                 'category'    => $data['category']    ?? null,
+                'priority'    => $data['priority']    ?? null,
                 'target_qty'  => $data['target_qty']  ?? null,
                 'unit'        => $data['unit']         ?? null,
                 'description' => $data['description']  ?? null,

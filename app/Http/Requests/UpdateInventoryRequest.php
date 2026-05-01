@@ -18,6 +18,7 @@ class UpdateInventoryRequest extends FormRequest
         return [
             'itemName'    => ['sometimes', 'required', 'string', 'max:255'],
             'category'    => ['sometimes', 'required', 'string', new Enum(InventoryEnum::class)],
+            'priority'    => ['sometimes', 'required', 'string', new Enum(\App\Enums\PriorityEnum::class)],
             'target_qty'  => ['sometimes', 'required', 'integer', 'min:1'],
             'unit'        => ['sometimes', 'required', 'string', 'max:50'],
             'description' => ['nullable', 'string', 'max:1000'],
@@ -29,6 +30,7 @@ class UpdateInventoryRequest extends FormRequest
         return [
             'itemName.required'   => 'Nama barang wajib diisi.',
             'category.*'          => 'Kategori tidak valid. Nilai yang diizinkan: MAKANAN, PAKAIAN, PENDIDIKAN, KESEHATAN, KEBERSIHAN, LAINNYA.',
+            'priority.*'          => 'Prioritas tidak valid. Nilai yang diizinkan: MENDESAK, PENTING, OPSIONAL.',
             'target_qty.min'      => 'Jumlah target minimal adalah 1.',
             'unit.required'       => 'Satuan wajib diisi.',
         ];

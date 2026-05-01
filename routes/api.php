@@ -12,6 +12,7 @@ use App\Http\Controllers\TrackingController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\DonationValidationController;
+use App\Http\Controllers\PublicDonationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -32,6 +33,8 @@ Route::get('/tracking/{tracking_code}', [TrackingController::class, 'trackDonati
 Route::get('/inventories', [InventoryController::class, 'publicIndex']);
 Route::get('/capacities', [\App\Http\Controllers\CapacityController::class, 'index']);
 Route::get('/public/katalog-kebutuhan', [InventoryController::class, 'getPublicCatalog']);
+Route::post('/public/donasi-barang', [PublicDonationController::class, 'store']);
+Route::get('/public/donasi-barang/{tracking_code}', [PublicDonationController::class, 'show']);
 
 /*
 |--------------------------------------------------------------------------

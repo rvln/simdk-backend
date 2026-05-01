@@ -22,6 +22,7 @@ class StoreInventoryRequest extends FormRequest
         return [
             'itemName'    => ['required', 'string', 'max:255'],
             'category'    => ['required', 'string', new Enum(InventoryEnum::class)],
+            'priority'    => ['required', 'string', new Enum(\App\Enums\PriorityEnum::class)],
             'target_qty'  => ['required', 'integer', 'min:1'],
             'unit'        => ['required', 'string', 'max:50'],
             'description' => ['nullable', 'string', 'max:1000'],
@@ -34,6 +35,8 @@ class StoreInventoryRequest extends FormRequest
             'itemName.required'   => 'Nama barang wajib diisi.',
             'category.required'   => 'Kategori wajib dipilih.',
             'category.*'          => 'Kategori tidak valid. Nilai yang diizinkan: MAKANAN, PAKAIAN, PENDIDIKAN, KESEHATAN, KEBERSIHAN, LAINNYA.',
+            'priority.required'   => 'Prioritas wajib dipilih.',
+            'priority.*'          => 'Prioritas tidak valid. Nilai yang diizinkan: MENDESAK, PENTING, OPSIONAL.',
             'target_qty.required' => 'Jumlah target wajib diisi.',
             'target_qty.min'      => 'Jumlah target minimal adalah 1.',
             'unit.required'       => 'Satuan wajib diisi.',

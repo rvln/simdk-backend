@@ -58,11 +58,9 @@ class InventoryController extends Controller
     public function getPublicCatalog()
     {
         try {
-            $inventories = \App\Models\Inventory::whereColumn('target_qty', '>', 'stock')
-                ->select(['id', 'itemName', 'category', 'stock', 'target_qty', 'unit'])
-                ->get()
+            $inventories = \App\Models\Inventory::all()
                 ->map(function ($item) {
-                    $item->remaining_need = $item->target_qty - $item->stock;
+                    $item->remaining_need = max(0, $item->target_qty - $item->terkumpul_bulan_ini);
                     return $item;
                 });
 
@@ -88,7 +86,8 @@ class InventoryController extends Controller
         $this->authorizeStaffRole($request);
 
         try {
-            $items = $this->inventoryService->getAllInventories();
+            $filters = $request->only(['search', 'category', 'status_kebutuhan', 'priority']);
+            $items = $this->inventoryService->getAllInventories($filters);
 
             return response()->json([
                 'status' => 'success',
