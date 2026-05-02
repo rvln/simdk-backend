@@ -9,6 +9,7 @@ use App\Enums\DonationStatusEnum;
 use App\Enums\DonationTypeEnum;
 use App\Models\ItemDonation;
 use App\Models\User;
+use App\Models\Visit;
 
 class Donation extends Model
 {
@@ -16,6 +17,7 @@ class Donation extends Model
 
     protected $fillable = [
         'user_id',
+        'visit_id',
         'donorName',
         'donorEmail',
         'donorPhone',
@@ -46,5 +48,10 @@ class Donation extends Model
     public function rejectedLogs()
     {
         return $this->hasMany(RejectedLog::class);
+    }
+
+    public function visit()
+    {
+        return $this->belongsTo(Visit::class);
     }
 }

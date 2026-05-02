@@ -7,6 +7,7 @@ use App\Models\Capacity;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use App\Enums\VisitStatusEnum;
+use App\Enums\DonationStatusEnum;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class CapacityService
@@ -109,25 +110,37 @@ class CapacityService
 
     /**
      * Rejects a visit request by setting its status to REJECTED.
+     * Lifecycle Cascade: If the visit has a bound donation (via visit_id FK),
+     * forcefully void it by setting its status to REJECTED as well.
+     * This prevents Inventory Hoarding — virtual stock from expired/rejected
+     * visit donations is immediately freed.
      *
      * @param string $visitId  The UUID of the visit to reject.
      * @return array           Serializable visit data.
      */
     public function rejectVisit(string $visitId): array
     {
-        $visit = Visit::find($visitId);
+        return DB::transaction(function () use ($visitId) {
+            $visit = Visit::find($visitId);
 
-        if (!$visit) {
-            throw new HttpException(404, 'Visit not found.');
-        }
+            if (!$visit) {
+                throw new HttpException(404, 'Visit not found.');
+            }
 
-        if ($visit->status !== VisitStatusEnum::PENDING->value) {
-            throw new HttpException(422, 'Only pending visits can be rejected.');
-        }
+            if ($visit->status !== VisitStatusEnum::PENDING->value) {
+                throw new HttpException(422, 'Only pending visits can be rejected.');
+            }
 
-        $visit->update(['status' => VisitStatusEnum::REJECTED->value]);
+            $visit->update(['status' => VisitStatusEnum::REJECTED->value]);
 
-        return $visit->toArray();
+            // Lifecycle Cascade: void the bound donation to free virtual stock
+            $donation = $visit->donation;
+            if ($donation && $donation->status->value === DonationStatusEnum::PENDING_DELIVERY->value) {
+                $donation->update(['status' => DonationStatusEnum::REJECTED->value]);
+            }
+
+            return $visit->toArray();
+        });
     }
 
     /**
@@ -146,5 +159,23 @@ class CapacityService
         }
 
         return $visit->toArray();
+    }
+
+    /**
+     * Retrieves raw capacity data as an array.
+     * Used by VisitController to compute session end-boundary for TTL binding.
+     *
+     * @param string $capacityId
+     * @return array
+     */
+    public function getCapacity(string $capacityId): array
+    {
+        $capacity = Capacity::find($capacityId);
+
+        if (!$capacity) {
+            throw new HttpException(404, 'Capacity slot not found.');
+        }
+
+        return $capacity->toArray();
     }
 }

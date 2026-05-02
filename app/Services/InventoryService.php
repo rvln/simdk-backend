@@ -25,12 +25,20 @@ class InventoryService
      *   1. checkMonthlyLimit(item_id, qty)
      *   2. If quota safe → insert(item_donation, status=pending_delivery)
      *
-     * @param string|null $userId     Authenticated user UUID, null for guest donors.
-     * @param array       $donorData  ['donorName', 'donorEmail', 'donorPhone']
-     * @param array       $items      [['inventory_id' => UUID, 'qty' => int], ...]
+     * @param string|null             $userId     Authenticated user UUID, null for guest donors.
+     * @param array                   $donorData  ['donorName', 'donorEmail', 'donorPhone']
+     * @param array                   $items      [['inventory_id' => UUID, 'qty' => int], ...]
+     * @param string|null             $visitId    Parent visit UUID for lifecycle binding (nullable).
+     * @param \DateTimeInterface|null  $expiresAt  Session-bound TTL; null = no TTL.
      * @return Donation
      */
-    public function submitPreSubmission(?string $userId, array $donorData, array $items): Donation
+    public function submitPreSubmission(
+        ?string $userId,
+        array $donorData,
+        array $items,
+        ?string $visitId = null,
+        ?\DateTimeInterface $expiresAt = null
+    ): Donation
     {
         $monthlyLimit = (int) config('simdk.monthly_item_limit', 500);
 
@@ -50,17 +58,19 @@ class InventoryService
             }
         }
 
-        return DB::transaction(function () use ($userId, $donorData, $items) {
+        return DB::transaction(function () use ($userId, $donorData, $items, $visitId, $expiresAt) {
             $paymentService = app(\App\Services\PaymentService::class);
 
             $donation = Donation::create([
                 'user_id'       => $userId,
+                'visit_id'      => $visitId,
                 'donorName'     => $donorData['donorName'],
                 'donorEmail'    => $donorData['donorEmail'],
                 'donorPhone'    => $donorData['donorPhone'],
                 'type'          => DonationTypeEnum::BARANG->value,
                 'status'        => DonationStatusEnum::PENDING_DELIVERY->value,
                 'tracking_code' => $paymentService->generateTrackingCode(),
+                'expires_at'    => $expiresAt,
             ]);
 
             foreach ($items as $item) {

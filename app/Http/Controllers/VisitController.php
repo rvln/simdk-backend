@@ -38,6 +38,25 @@ class VisitController extends Controller
             // Unified endpoint: if visitor brings donation items, process Smart Cart
             $donation = null;
             if ($request->boolean('bringsDonation') && $request->has('items')) {
+                $slotBoundaryMap = [
+                    'MORNING'   => '10:00:00',
+                    'AFTERNOON' => '15:00:00',
+                    'EVENING'   => '18:00:00',
+                    'NIGHT'     => '20:00:00',
+                ];
+                // Access the eager-loaded capacity directly to avoid toArray() ISO serialization
+                $visitCapacity = $visit->capacity;
+                // Strictly extract Y-m-d to prevent Carbon "Double time specification" error
+                // when the date cast outputs a full ISO-8601 string (e.g. 2026-05-10T00:00:00.000Z)
+                $visitDate = \Carbon\Carbon::parse($visitCapacity->date)->format('Y-m-d');
+                $slotValue = $visitCapacity->slot instanceof \BackedEnum
+                    ? $visitCapacity->slot->value
+                    : (string) $visitCapacity->slot;
+                $boundaryTime = $slotBoundaryMap[$slotValue] ?? '23:59:59';
+                // Combine strict date + boundary time — unambiguous input for Carbon
+                // Then convert to UTC so the database value + JSON 'Z' suffix are truthful
+                $expiresAt = \Carbon\Carbon::parse("{$visitDate} {$boundaryTime}", 'Asia/Makassar')->utc();
+
                 $donation = $this->inventoryService->submitPreSubmission(
                     $userId,
                     [
@@ -45,7 +64,9 @@ class VisitController extends Controller
                         'donorEmail' => $user->email,
                         'donorPhone' => $request->input('donorPhone', ''),
                     ],
-                    $request->items
+                    $request->items,
+                    $visit->id,
+                    $expiresAt,
                 );
             }
 

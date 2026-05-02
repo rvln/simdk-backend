@@ -43,8 +43,8 @@ class Visit extends Model
         
         $slotBoundaryMap = [
             'MORNING' => '10:00:00',
-            'AFTERNOON' => '14:00:00',
-            'EVENING' => '16:00:00',
+            'AFTERNOON' => '15:00:00',
+            'EVENING' => '18:00:00',
             'NIGHT' => '20:00:00',
         ];
 
@@ -65,5 +65,10 @@ class Visit extends Model
     public function capacity()
     {
         return $this->belongsTo(Capacity::class);
+    }
+
+    public function donation()
+    {
+        return $this->hasOne(Donation::class);
     }
 }
