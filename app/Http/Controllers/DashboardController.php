@@ -29,7 +29,10 @@ class DashboardController extends Controller
         $this->authorizeStaffRole($request);
 
         // 1. Metrics
-        $pendingVisits = Visit::where('status', VisitStatusEnum::PENDING)->count();
+        $pendingVisits = Visit::where('status', VisitStatusEnum::PENDING)
+            ->get()
+            ->filter(fn ($visit) => !$visit->is_expired)
+            ->count();
         $pendingDonations = Donation::whereIn('status', [
             DonationStatusEnum::PENDING_DELIVERY, 
             DonationStatusEnum::PENDING
