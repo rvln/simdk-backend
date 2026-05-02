@@ -10,6 +10,7 @@ use App\Models\RejectedLog;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\ValidationException;
 use App\Enums\DonationStatusEnum;
 use App\Enums\DonationTypeEnum;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -67,6 +68,98 @@ class InventoryService
 
                 $donation->itemDonations()->create([
                     'inventory_id'      => $item['inventory_id'],
+                    'itemName_snapshot' => $inventory->itemName,
+                    'qty'               => $item['qty'],
+                ]);
+            }
+
+            return $donation->load('itemDonations');
+        });
+    }
+
+    /**
+     * Submit a public item donation with Soft-Booking TTL and Pre-Commit Double-Check.
+     *
+     * Atomic Transaction Flow:
+     *   1. Create Donation with status=PENDING_DELIVERY, expires_at=now+30h
+     *   2. For each catalog item: lockForUpdate() → re-count virtual stock → validate capacity → create ItemDonation
+     *   3. For MANUAL items: create ItemDonation with inventory_id=null (no capacity check)
+     *
+     * The Pre-Commit Double-Check ensures that even if two requests pass the UI-level
+     * availability check simultaneously, the second one will be rejected at the database gate.
+     *
+     * AGENTS.md §3: Pessimistic Locking enforced via lockForUpdate()
+     *
+     * @param array $donorData  ['donorName', 'donorPhone', 'donorEmail' => nullable]
+     * @param array $items      [['id' => UUID|'MANUAL', 'name' => string|null, 'qty' => int], ...]
+     * @return Donation
+     * @throws ValidationException  If catalog capacity would be exceeded (HTTP 422).
+     */
+    public function submitPublicDonation(array $donorData, array $items): Donation
+    {
+        $paymentService = app(\App\Services\PaymentService::class);
+        $trackingCode = $paymentService->generateTrackingCode();
+
+        return DB::transaction(function () use ($donorData, $items, $trackingCode) {
+            // 1. Create the parent Donation with 30-hour TTL
+            $donation = Donation::create([
+                'tracking_code' => $trackingCode,
+                'donorName'     => $donorData['donorName'],
+                'donorEmail'    => $donorData['donorEmail'] ?? null,
+                'donorPhone'    => $donorData['donorPhone'],
+                'type'          => DonationTypeEnum::BARANG->value,
+                'status'        => DonationStatusEnum::PENDING_DELIVERY->value,
+                'expires_at'    => now()->addHours(30),
+            ]);
+
+            // 2. Process each item in the cart
+            foreach ($items as $item) {
+                if ($item['id'] === 'MANUAL') {
+                    // MANUAL items: no capacity check, no inventory linkage
+                    $donation->itemDonations()->create([
+                        'inventory_id'      => null,
+                        'itemName_snapshot' => $item['name'],
+                        'qty'               => $item['qty'],
+                    ]);
+                    continue;
+                }
+
+                // CATALOG items: Pessimistic Lock + Pre-Commit Double-Check
+                $inventory = Inventory::where('id', $item['id'])
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$inventory) {
+                    throw ValidationException::withMessages([
+                        'items' => ["Item inventaris dengan ID {$item['id']} tidak ditemukan."],
+                    ]);
+                }
+
+                // Redundant Verification: re-count pending virtual stock for THIS specific
+                // inventory inside the locked transaction block. This catches race conditions
+                // where two requests passed the UI availability check simultaneously.
+                $currentVirtual = ItemDonation::where('inventory_id', $item['id'])
+                    ->whereHas('donation', function ($q) {
+                        $q->where('status', DonationStatusEnum::PENDING_DELIVERY->value)
+                          ->where('expires_at', '>', now());
+                    })
+                    ->sum('qty');
+
+                // Validation Gate: stock + current_virtual + incoming_qty > target = REJECT
+                $totalAfter = $inventory->stock + $currentVirtual + $item['qty'];
+                if ($totalAfter > $inventory->target_qty) {
+                    $remaining = max(0, $inventory->target_qty - $inventory->stock - $currentVirtual);
+                    throw ValidationException::withMessages([
+                        'items' => [
+                            "Kapasitas gudang untuk \"{$inventory->itemName}\" sudah terisi. "
+                            . "Sisa kapasitas: {$remaining} {$inventory->unit}."
+                        ],
+                    ]);
+                }
+
+                // Capacity validated — create the ItemDonation
+                $donation->itemDonations()->create([
+                    'inventory_id'      => $item['id'],
                     'itemName_snapshot' => $inventory->itemName,
                     'qty'               => $item['qty'],
                 ]);

@@ -26,7 +26,19 @@ class DonationValidationService
         }
 
         if (!empty($filters['status']) && $filters['status'] !== 'ALL') {
-            $query->where('status', $filters['status']);
+            if ($filters['status'] === 'EXPIRED') {
+                $query->where('status', DonationStatusEnum::PENDING_DELIVERY->value)
+                      ->whereNotNull('expires_at')
+                      ->where('expires_at', '<', now());
+            } elseif ($filters['status'] === 'PENDING_DELIVERY') {
+                $query->where('status', DonationStatusEnum::PENDING_DELIVERY->value)
+                      ->where(function ($q) {
+                          $q->whereNull('expires_at')
+                            ->orWhere('expires_at', '>=', now());
+                      });
+            } else {
+                $query->where('status', $filters['status']);
+            }
         } elseif (empty($filters['status'])) {
             $query->where('status', DonationStatusEnum::PENDING_DELIVERY->value);
         }

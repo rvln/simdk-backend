@@ -3,67 +3,54 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use App\Models\Donation;
-use App\Models\Inventory;
-use App\Enums\DonationTypeEnum;
-use App\Enums\DonationStatusEnum;
-use Illuminate\Support\Str;
+use App\Services\InventoryService;
 
 class PublicDonationController extends Controller
 {
+    public function __construct(private InventoryService $inventoryService) {}
+
     /**
      * Store a newly created item donation from the public form.
+     *
+     * AGENTS.md §2 Compliance: Controller handles ONLY input validation
+     * and service delegation. All business logic (locking, TTL, capacity checks)
+     * lives in InventoryService::submitPublicDonation().
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'donorName' => 'required|string|max:255',
-            'donorPhone' => 'required|string|max:255',
-            'items' => 'required|array|min:1',
-            'items.*.id' => 'required|string',
-            'items.*.name' => 'required_if:items.*.id,MANUAL|string|max:255',
-            'items.*.qty' => 'required|integer|min:1',
+            'donorName'      => 'required|string|max:255',
+            'donorPhone'     => 'required|string|max:255',
+            'items'          => 'required|array|min:1',
+            'items.*.id'     => 'required|string',
+            'items.*.name'   => 'required_if:items.*.id,MANUAL|string|max:255',
+            'items.*.qty'    => 'required|integer|min:1',
         ]);
 
-        $trackingCode = 'TXN-DON-' . date('Ymd') . '-' . strtoupper(Str::random(6));
+        try {
+            $donation = $this->inventoryService->submitPublicDonation(
+                [
+                    'donorName'  => $validated['donorName'],
+                    'donorPhone' => $validated['donorPhone'],
+                    'donorEmail' => $request->input('donorEmail', null),
+                ],
+                $validated['items']
+            );
 
-        $donation = DB::transaction(function () use ($validated, $trackingCode, $request) {
-            $donation = Donation::create([
-                'tracking_code' => $trackingCode,
-                'donorName'     => $validated['donorName'],
-                'donorEmail'    => $request->input('donorEmail', null),
-                'donorPhone'    => $validated['donorPhone'],
-                'type'          => DonationTypeEnum::BARANG->value,
-                'status'        => DonationStatusEnum::PENDING_DELIVERY->value,
-            ]);
-
-            foreach ($validated['items'] as $item) {
-                if ($item['id'] === 'MANUAL') {
-                    $donation->itemDonations()->create([
-                        'inventory_id'      => null,
-                        'item_name'         => $item['name'],
-                        'itemName_snapshot' => $item['name'],
-                        'qty'               => $item['qty'],
-                    ]);
-                } else {
-                    $inventory = Inventory::findOrFail($item['id']);
-                    $donation->itemDonations()->create([
-                        'inventory_id'      => $item['id'],
-                        'item_name'         => $inventory->itemName,
-                        'itemName_snapshot' => $inventory->itemName,
-                        'qty'               => $item['qty'],
-                    ]);
-                }
-            }
-
-            return $donation;
-        });
-
-        return response()->json([
-            'status' => 'success',
-            'tracking_code' => $donation->tracking_code,
-        ], 201);
+            return response()->json([
+                'status'        => 'success',
+                'tracking_code' => $donation->tracking_code,
+            ], 201);
+        } catch (ValidationException $e) {
+            // Clean 422 JSON for frontend interception
+            return response()->json([
+                'status'  => 'error',
+                'message' => $e->getMessage(),
+                'errors'  => $e->errors(),
+            ], 422);
+        }
     }
 
     /**

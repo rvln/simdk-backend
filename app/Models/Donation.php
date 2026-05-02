@@ -23,12 +23,14 @@ class Donation extends Model
         'amount',
         'status',
         'tracking_code',
+        'expires_at',
     ];
 
     protected $casts = [
         'status' => DonationStatusEnum::class,
         'type' => DonationTypeEnum::class,
         'amount' => 'decimal:2',
+        'expires_at' => 'datetime',
     ];
 
     public function user()
