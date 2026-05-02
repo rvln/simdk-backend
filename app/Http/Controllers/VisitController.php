@@ -55,7 +55,8 @@ class VisitController extends Controller
                 $boundaryTime = $slotBoundaryMap[$slotValue] ?? '23:59:59';
                 // Combine strict date + boundary time — unambiguous input for Carbon
                 // Then convert to UTC so the database value + JSON 'Z' suffix are truthful
-                $expiresAt = \Carbon\Carbon::parse("{$visitDate} {$boundaryTime}", 'Asia/Makassar')->utc();
+                $expiresAt = \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', $visitDate . ' ' . $boundaryTime, 'Asia/Makassar')
+                        ->setTimezone('UTC');
 
                 $donation = $this->inventoryService->submitPreSubmission(
                     $userId,

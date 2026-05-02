@@ -98,7 +98,7 @@ class DashboardController extends Controller
                 'id' => $dist->id,
                 'title' => $dist->qty . ' ' . ($dist->inventory->unit ?? 'pcs') . ' ' . ($dist->inventory->itemName ?? 'Barang'),
                 'actor' => $dist->user->name ?? 'Admin',
-                'time_formatted' => $dist->distributed_at->format('d M Y, H:i'),
+                'time_formatted' => $dist->distributed_at->toIso8601String(),
                 'status_badge' => 'TERDISTRIBUSI',
                 'target_recipient' => $dist->target_recipient,
             ];
