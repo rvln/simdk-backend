@@ -114,4 +114,29 @@ class VisitController extends Controller
             ], $e->getStatusCode());
         }
     }
+
+    /**
+     * PATCH /api/visits/{visit}/resolve
+     * Resolves an approved visit as COMPLETED or NO_SHOW.
+     */
+    public function resolve(\Illuminate\Http\Request $request, string $visit)
+    {
+        $request->validate([
+            'status' => 'required|string|in:COMPLETED,NO_SHOW'
+        ]);
+
+        try {
+            $this->capacityService->resolveVisit($visit, $request->status);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Visit resolved successfully.'
+            ]);
+        } catch (HttpException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], $e->getStatusCode());
+        }
+    }
 }

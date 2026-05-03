@@ -36,7 +36,14 @@ class DashboardController extends Controller
         $pendingDonations = Donation::whereIn('status', [
             DonationStatusEnum::PENDING_DELIVERY, 
             DonationStatusEnum::PENDING
-        ])->count();
+        ])
+        ->where(function ($q) {
+        // Hitung yang belum expired:
+        // status PENDING (tidak punya expires_at) tetap dihitung
+        // status PENDING_DELIVERY hanya dihitung jika expires_at masih di masa depan atau null
+        $q->whereNull('expires_at')
+        ->orWhere('expires_at', '>=', now());
+        })->count();
         
         $startOfWeek = Carbon::now()->startOfWeek();
         $endOfWeek = Carbon::now()->endOfWeek();

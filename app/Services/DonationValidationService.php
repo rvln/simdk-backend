@@ -40,7 +40,12 @@ class DonationValidationService
                 $query->where('status', $filters['status']);
             }
         } elseif (empty($filters['status'])) {
-            $query->where('status', DonationStatusEnum::PENDING_DELIVERY->value);
+    // Default: only active PENDING_DELIVERY (not expired)
+    $query->where('status', DonationStatusEnum::PENDING_DELIVERY->value)
+          ->where(function ($q) {
+              $q->whereNull('expires_at')
+                ->orWhere('expires_at', '>=', now());
+          });
         }
 
         if (!empty($filters['search'])) {
@@ -95,13 +100,25 @@ class DonationValidationService
             $donation->load('itemDonations');
 
             foreach ($donation->itemDonations as $item) {
-                // Lock each inventory row to prevent concurrent stock corruption
-                $inventory = Inventory::where('id', $item->inventory_id)
-                    ->lockForUpdate()
-                    ->first();
+                if (empty($item->inventory_id)) {
+                    // Unplanned / Formulir Bebas logic
+                    $newInventory = \App\Models\Inventory::create([
+                        'itemName'   => $item->itemName_snapshot ?? 'Barang Donasi',
+                        'category'   => 'LAINNYA', // Provide a fallback category
+                        'stock'      => $item->qty,
+                        'target_qty' => 0,
+                        'priority'   => null,
+                    ]);
+                    $item->update(['inventory_id' => $newInventory->id]);
+                } else {
+                    // Planned Catalog logic with Pessimistic Locking
+                    $inventory = \App\Models\Inventory::where('id', $item->inventory_id)
+                        ->lockForUpdate()
+                        ->first();
 
-                if ($inventory) {
-                    $inventory->increment('stock', $item->qty);
+                    if ($inventory) {
+                        $inventory->increment('stock', $item->qty);
+                    }
                 }
             }
 

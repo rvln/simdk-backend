@@ -8,4 +8,6 @@ enum VisitStatusEnum: string
     case APPROVED = 'APPROVED';
     case REJECTED = 'REJECTED';
     case NEEDS_RESCHEDULE = 'NEEDS_RESCHEDULE';
+    case COMPLETED = 'COMPLETED';
+    case NO_SHOW = 'NO_SHOW';
 }

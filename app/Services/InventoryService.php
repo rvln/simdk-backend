@@ -210,14 +210,29 @@ class InventoryService
             // Update donation status to SUCCESS
             $donation->update(['status' => DonationStatusEnum::SUCCESS->value]);
 
-            // Increment stock for each item donation with pessimistic locking
+            // Increment stock for each item donation with pessimistic locking, or auto-create unplanned items
             foreach ($donation->itemDonations as $item) {
-                $inventory = Inventory::where('id', $item->inventory_id)
-                    ->lockForUpdate()
-                    ->first();
+                if ($item->inventory_id) {
+                    $inventory = Inventory::where('id', $item->inventory_id)
+                        ->lockForUpdate()
+                        ->first();
 
-                if ($inventory) {
-                    $inventory->increment('stock', $item->qty);
+                    if ($inventory) {
+                        $inventory->increment('stock', $item->qty);
+                    }
+                } else {
+                    // On-the-Fly Auto-Creation for unplanned items (Donasi Bebas)
+                    $inventory = Inventory::create([
+                        'itemName'    => $item->itemName_snapshot ?? 'Item Tidak Dikenal',
+                        'category'    => 'LAINNYA',
+                        'target_qty'  => 0,
+                        'stock'       => $item->qty,
+                        'unit'        => 'Pcs',
+                        'priority'    => null, // Explicitly segregates it from the planned catalog
+                    ]);
+
+                    // Bind the generated inventory ID back to the audit trail
+                    $item->update(['inventory_id' => $inventory->id]);
                 }
             }
 

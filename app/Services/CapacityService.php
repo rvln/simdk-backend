@@ -178,4 +178,35 @@ class CapacityService
 
         return $capacity->toArray();
     }
+
+    /**
+     * Resolves an approved visit by checking them in or marking as no-show.
+     *
+     * @param string $visitId
+     * @param string $status
+     * @return array
+     */
+    public function resolveVisit(string $visitId, string $status): array
+    {
+        return DB::transaction(function () use ($visitId, $status) {
+            $visit = Visit::find($visitId);
+
+            if (!$visit) {
+                throw new HttpException(404, 'Visit not found.');
+            }
+
+            $currentStatus = $visit->status instanceof \BackedEnum ? $visit->status->value : $visit->status;
+            if ($currentStatus !== VisitStatusEnum::APPROVED->value) {
+                throw new HttpException(422, 'Only approved visits can be resolved.');
+            }
+
+            if (!in_array($status, [VisitStatusEnum::COMPLETED->value, VisitStatusEnum::NO_SHOW->value])) {
+                throw new HttpException(422, 'Invalid resolution status.');
+            }
+
+            $visit->update(['status' => $status]);
+
+            return $visit->toArray();
+        });
+    }
 }
