@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Facades\Log;
+
 use App\Models\Visit;
 use App\Models\Donation;
 use App\Models\Distribution;
@@ -45,10 +47,13 @@ class DashboardController extends Controller
         ->orWhere('expires_at', '>=', now());
         })->count();
         
-        $startOfWeek = Carbon::now()->startOfWeek();
-        $endOfWeek = Carbon::now()->endOfWeek();
+        $startDate = Carbon::today();
+        $endDate = Carbon::today()->addDays(6);
         
-        $weeklyCapacities = Capacity::whereBetween('date', [$startOfWeek, $endOfWeek])->get();
+        $weeklyCapacities = Capacity::whereBetween('date', [$startDate, $endDate])
+            ->where('is_active', 1 )
+            ->get();
+
         $totalQuota = $weeklyCapacities->sum('quota');
         $totalBooked = $weeklyCapacities->sum('booked');
         $capacityRemaining = max(0, $totalQuota - $totalBooked);
