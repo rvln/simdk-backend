@@ -25,8 +25,8 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/verify-email', [AuthController::class, 'verifyEmail']);
 Route::post('/resend-verification', [AuthController::class, 'resendVerification']);
 
-Route::post('/donations', [DonationController::class, 'initiateDonation']);
-Route::post('/donations/items', [DonationController::class, 'submitItemDonation']);
+Route::post('/donasi/finansial', [DonationController::class, 'initiateDonation']);
+Route::post('/donasi/barang', [DonationController::class, 'submitItemDonation']);
 Route::post('/webhooks/midtrans', [WebhookController::class, 'handleMidtransWebhook']);
 
 Route::get('/tracking/{tracking_code}', [TrackingController::class, 'trackDonation']);

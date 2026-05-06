@@ -2,27 +2,39 @@
 
 namespace App\Services;
 
+use Exception;
 use App\Models\Donation;
 use App\Enums\DonationStatusEnum;
 use App\Enums\DonationTypeEnum;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use Midtrans\Config;
+use Midtrans\Snap;
 
 class PaymentService
 {
     /**
-     * Initiate a financial (DANA) donation.
+     * Initialize Midtrans Configuration
+     */
+    public function __construct()
+    {
+        Config::$serverKey    = config('midtrans.server_key');
+        Config::$isProduction = config('midtrans.is_production');
+        Config::$isSanitized  = config('midtrans.is_sanitized');
+        Config::$is3ds        = config('midtrans.is_3ds');
+    }
+
+    /**
+     * Initiate a financial (DANA) donation and return Snap Token.
      * Creates a Donation record with status=PENDING and type=DANA.
      * tracking_code is NOT generated here — only upon confirmed SUCCESS via webhook.
      *
-     * UML Ref: Sequence Diagram §SD-3 — DonationController → PaymentService: initiate
-     *   PaymentService → Midtrans API: getCheckoutUrl()
-     *
      * @param string|null $userId  Authenticated user UUID (nullable for guest donors).
      * @param array $donorData     ['donorName', 'donorEmail', 'donorPhone']
-     * @param float $amount        Donation amount (minimum enforced by FormRequest).
-     * @return array               Serializable response with transaction_id and checkout_url.
+     * @param float $amount        Donation amount.
+     * @return array               [snap_token, donation]
      */
     public function initiateDonation(?string $userId, array $donorData, float $amount): array
     {
@@ -36,47 +48,64 @@ class PaymentService
             'status'     => DonationStatusEnum::PENDING->value,
         ]);
 
-        // In production, call Midtrans Snap API here:
-        // $checkoutUrl = $this->midtransClient->createTransaction($donation->id, $amount);
-        $checkoutUrl = 'https://app.sandbox.midtrans.com/snap/v3/redacted';
+        try {
+            // Generate a strictly unique Order ID for Midtrans
+            $orderId = 'DON-' . Str::uuid();
 
-        return [
-            'transaction_id' => $donation->id,
-            'checkout_url'   => $checkoutUrl,
-        ];
+            $params = [
+                'transaction_details' => [
+                    'order_id'     => $orderId,
+                    'gross_amount' => (int) $amount,
+                ],
+                'customer_details' => [
+                    'first_name' => $donorData['donorName'],
+                    'email'      => $donorData['donorEmail'],
+                    'phone'      => $donorData['donorPhone'],
+                ],
+            ];
+
+            // Request Token from Midtrans
+            $snapToken = Snap::getSnapToken($params);
+
+            // Save the token and order_id back to the database
+            $donation->update([
+                'order_id'   => $orderId,
+                'snap_token' => $snapToken,
+            ]);
+
+            return [
+                'snap_token' => $snapToken,
+                'donation'   => $donation,
+            ];
+
+        } catch (Exception $e) {
+            Log::error('Midtrans Snap Token Error: ' . $e->getMessage(), [
+                'donation_id' => $donation->id,
+            ]);
+            throw new HttpException(502, 'Gerbang pembayaran sedang sibuk. Silakan coba beberapa saat lagi.');
+        }
     }
 
     /**
      * Process a Midtrans webhook callback with strict Idempotency Guard.
-     *
-     * UML Ref: Sequence Diagram §SD-3 — [Idempotency Guard]
-     *   1. Verify signature (placeholder for production)
-     *   2. Lookup order by order_id
-     *   3. If current_status == final (success/failed/expired) → discard, return true
-     *   4. If not final, evaluate transaction_status and update atomically
-     *   5. On 'settlement'/'capture' → DB::transaction { status=SUCCESS + generate tracking_code }
-     *
-     * AGENTS.md §3: Webhook Idempotency — if order_id is already marked as final,
-     *   return HTTP 200 OK immediately without modifying the database.
      *
      * @param array $payload  Raw webhook payload from Midtrans.
      * @return bool           True if processed successfully (including idempotent hits).
      */
     public function processWebhook(array $payload): bool
     {
-        $orderId = $payload['order_id'] ?? null;
+        $orderId           = $payload['order_id'] ?? null;
         $transactionStatus = $payload['transaction_status'] ?? null;
 
         if (!$orderId || !$transactionStatus) {
             throw new HttpException(400, 'Missing required webhook fields.');
         }
 
-        // Cryptographic Verification: SHA512 HMAC validation (G-02 Security Hotfix)
-        // Midtrans signs webhooks as: SHA512(order_id + status_code + gross_amount + server_key)
-        $signatureKey = $payload['signature_key'] ?? '';
-        $statusCode   = $payload['status_code'] ?? '';
-        $grossAmount  = $payload['gross_amount'] ?? '';
-        $serverKey    = config('midtrans.server_key');
+        // Cryptographic Verification: SHA512 HMAC validation
+        $signatureKey      = $payload['signature_key'] ?? '';
+        $statusCode        = $payload['status_code'] ?? '';
+        $grossAmount       = $payload['gross_amount'] ?? '';
+        $serverKey         = config('midtrans.server_key');
 
         $expectedSignature = hash('sha512', $orderId . $statusCode . $grossAmount . $serverKey);
 
@@ -88,7 +117,8 @@ class PaymentService
             throw new HttpException(403, 'Invalid webhook signature.');
         }
 
-        $donation = Donation::find($orderId);
+        // Lookup order by the globally unique order_id, NOT the local auto-incrementing ID
+        $donation = Donation::where('order_id', $orderId)->first();
 
         if (!$donation) {
             throw new HttpException(404, 'Donation not found.');
@@ -108,29 +138,33 @@ class PaymentService
 
         // Process based on Midtrans transaction_status
         if ($transactionStatus === 'settlement' || $transactionStatus === 'capture') {
+            
             // Atomic Operation: status update + tracking_code generation must be indivisible
-            // UML Ref: §SD-3 step 5 — BEGIN, generateCode(), update status+tracking_code, COMMIT
-            DB::transaction(function () use ($donation, $orderId) {
-                // Re-acquire with pessimistic lock to close the race-condition window
-                // between the outer idempotency check and this critical section.
-                $lockedDonation = Donation::where('id', $donation->id)
-                    ->lockForUpdate()
-                    ->first();
+            DB::transaction(function () use ($donation, $orderId, $payload) {
+    $lockedDonation = Donation::where('id', $donation->id)
+        ->lockForUpdate()
+        ->first();
 
-                // State Transition Guard (Anti-Replay / State Corruption Mitigation):
-                // Only PENDING donations may transition to SUCCESS.
-                // If a concurrent webhook already moved this to FAILED, EXPIRED,
-                // or SUCCESS, we MUST NOT overwrite that terminal state.
-                if ($lockedDonation->status->value !== DonationStatusEnum::PENDING->value) {
-                    Log::critical("State Transition Guard: Blocked illegal transition from {$lockedDonation->status->value} to SUCCESS for order_id={$orderId}.");
-                    return; // Acknowledge receipt without mutating — outer method returns true → HTTP 200
-                }
+    if ($lockedDonation->status->value !== DonationStatusEnum::PENDING->value) {
+        Log::critical("State Transition Guard: Blocked illegal transition from {$lockedDonation->status->value} to SUCCESS for order_id={$orderId}.");
+        return;
+    }
 
-                $lockedDonation->update([
-                    'status'        => DonationStatusEnum::SUCCESS->value,
-                    'tracking_code' => $this->generateTrackingCode(),
-                ]);
-            });
+    // Hanya donasi NON-DANA (barang) yang boleh memiliki tracking_code
+    $trackingCode = null;
+    if ($lockedDonation->type->value !== DonationTypeEnum::DANA->value) {
+        $trackingCode = 'TXN-DON-' . strtoupper(Str::random(8));
+        // Atau panggil generateTrackingCode() jika Anda ingin format tahun:
+        // $trackingCode = $this->generateTrackingCode();
+    }
+
+    $lockedDonation->update([
+        'status'        => DonationStatusEnum::SUCCESS->value,
+        'payment_type'  => $payload['payment_type'] ?? $lockedDonation->payment_type,
+        'tracking_code' => $trackingCode, // NULL untuk DANA
+    ]);
+});
+
         } elseif ($transactionStatus === 'expire') {
             $donation->update(['status' => DonationStatusEnum::EXPIRED->value]);
         } elseif ($transactionStatus === 'cancel' || $transactionStatus === 'deny') {
@@ -142,11 +176,6 @@ class PaymentService
 
     /**
      * Retrieve limited tracking data for a public tracking query.
-     * Returns ONLY: tracking_code, transaction_date, payment_status, type, distribution_status.
-     * MUST NOT expose internal operational data or recipient identities.
-     *
-     * UML Ref: Sequence Diagram §SD-5 — TrackingController → Database: findDonation(tracking_code)
-     * SRS NFR-04: Public Tracking data limitation.
      *
      * @param string $trackingCode  The public-facing tracking code.
      * @return array                Limited DTO for public consumption.
@@ -159,9 +188,6 @@ class PaymentService
             throw new HttpException(404, 'Data tidak ditemukan');
         }
 
-        // Determine distribution status by checking if any related inventory items
-        // have been distributed (via the donation's itemDonations → inventory → distributions chain).
-        // For DANA type, distribution_status is derived from the donation status itself.
         $distributionStatus = $this->resolveDistributionStatus($donation);
 
         return [
@@ -176,9 +202,6 @@ class PaymentService
     /**
      * Generates a unique, immutable tracking code.
      * Format: TXN-DON-YYYY-XXXX
-     *
-     * UML Ref: §SD-3 step 5 — PaymentService: generateCode() → string(tracking_code)
-     * AGENTS.md §3: Public Tracking — every successful donation must generate a unique, immutable tracking_code.
      *
      * @return string
      */
@@ -195,8 +218,6 @@ class PaymentService
 
     /**
      * Resolve the distribution status for a donation.
-     * For DANA donations, status mirrors the payment status.
-     * For BARANG donations, checks if item donations have been distributed.
      *
      * @param Donation $donation
      * @return string
@@ -209,14 +230,12 @@ class PaymentService
                 : 'pending';
         }
 
-        // For BARANG: check if any item donations exist and if their inventory has distributions
         $itemDonations = $donation->itemDonations;
 
         if ($itemDonations->isEmpty()) {
             return 'pending';
         }
 
-        // If all item donations have matching distributions, consider it distributed
         $allDistributed = $itemDonations->every(function ($item) {
             return $item->inventory &&
                    $item->inventory->distributions &&

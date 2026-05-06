@@ -36,7 +36,7 @@ class DonationController extends Controller
             return response()->json([
                 'status' => 'success',
                 'data'   => $result,
-            ]);
+            ], 201);
         } catch (HttpException $e) {
             return response()->json([
                 'status'  => 'error',
