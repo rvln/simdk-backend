@@ -13,6 +13,9 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\DonationValidationController;
 use App\Http\Controllers\PublicDonationController;
+use App\Http\Controllers\PublicTransparencyController;
+use App\Http\Controllers\VisitReportController;
+use App\Http\Controllers\AdminReportModerationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -35,6 +38,13 @@ Route::get('/capacities', [\App\Http\Controllers\CapacityController::class, 'ind
 Route::get('/public/katalog-kebutuhan', [InventoryController::class, 'getPublicCatalog']);
 Route::post('/public/donasi-barang', [PublicDonationController::class, 'store']);
 Route::get('/public/donasi-barang/{tracking_code}', [PublicDonationController::class, 'show']);
+
+// Public Transparency Page — PII-masked, paginated, read-only endpoints
+Route::get('/public/transparansi/donasi', [PublicTransparencyController::class, 'donations']);
+Route::get('/public/transparansi/distribusi', [PublicTransparencyController::class, 'distributions']);
+Route::get('/public/transparansi/kebutuhan', [PublicTransparencyController::class, 'inventories']);
+Route::get('/public/transparansi/kunjungan', [PublicTransparencyController::class, 'visits']);
+Route::get('/public/transparansi/laporan', [PublicTransparencyController::class, 'visitReports']);
 
 /*
 |--------------------------------------------------------------------------
@@ -85,4 +95,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/validasi-donasi', [DonationValidationController::class, 'index']);
     Route::post('/validasi-donasi/{id}/approve', [DonationValidationController::class, 'approve']);
     Route::post('/validasi-donasi/{id}/reject',  [DonationValidationController::class, 'reject']);
+
+    // UGC Visit Reports — Visitor context (any authenticated user)
+    Route::post('/visit-reports', [VisitReportController::class, 'store']);
+    Route::get('/visit-reports/my', [VisitReportController::class, 'myReports']);
+
+    // UGC Visit Reports — Admin Moderation (Pengurus & Kepala Panti only)
+    // Role gate enforced inside AdminReportModerationController::authorizeStaffRole()
+    Route::get('/admin/visit-reports', [AdminReportModerationController::class, 'index']);
+    Route::patch('/admin/visit-reports/{id}/moderate', [AdminReportModerationController::class, 'moderate']);
 });
