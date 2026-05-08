@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use App\Models\Donation;
 use App\Services\InventoryService;
+use Illuminate\Support\Facades\DB;
+use App\Enums\DonationStatusEnum;
 
 class PublicDonationController extends Controller
 {
@@ -70,5 +72,23 @@ class PublicDonationController extends Controller
             'status' => 'success',
             'data' => $donation
         ]);
+    }
+
+    /**
+     * Cancel a pending public financial donation.
+     */
+    public function cancel(Request $request, $id)
+    {
+        return DB::transaction(function () use ($id) {
+            $donation = Donation::findOrFail($id);
+
+            if ($donation->status->value !== DonationStatusEnum::PENDING->value) {
+                return response()->json(['message' => 'Hanya donasi dengan status PENDING yang dapat dibatalkan.'], 422);
+            }
+
+            $donation->update(['status' => DonationStatusEnum::EXPIRED->value]);
+
+            return response()->json(['status' => 'success', 'message' => 'Donasi berhasil dibatalkan.']);
+        });
     }
 }

@@ -38,6 +38,7 @@ Route::get('/capacities', [\App\Http\Controllers\CapacityController::class, 'ind
 Route::get('/public/katalog-kebutuhan', [InventoryController::class, 'getPublicCatalog']);
 Route::post('/public/donasi-barang', [PublicDonationController::class, 'store']);
 Route::get('/public/donasi-barang/{tracking_code}', [PublicDonationController::class, 'show']);
+Route::patch('/public/donations/{id}/cancel', [PublicDonationController::class, 'cancel']);
 
 // Public Transparency Page — PII-masked, paginated, read-only endpoints
 Route::get('/public/transparansi/donasi', [PublicTransparencyController::class, 'donations']);
