@@ -244,6 +244,43 @@ class PublicTransparencyController extends Controller
     }
 
     /**
+     * GET /api/public/kunjungan/upcoming
+     *
+     * Returns upcoming visits (all statuses) for the public schedule page.
+     * PII-masked visitor names. Used by the jadwal-kunjungan calendar & cards.
+     */
+    public function upcomingVisits(Request $request): JsonResponse
+    {
+        $query = Visit::with(['user', 'capacity'])
+            ->whereHas('capacity', function ($q) {
+                $q->where('date', '>=', now()->toDateString());
+            })
+            ->latest('created_at');
+
+        $items = $query->get()->map(function (Visit $visit) {
+            $statusValue = $visit->status instanceof VisitStatusEnum
+                ? $visit->status->value
+                : $visit->status;
+
+            return [
+                'id'            => $visit->id,
+                'visitor_name'  => $this->maskName($visit->user?->name ?? 'Pengunjung'),
+                'status'        => $statusValue,
+                'visit_date'    => $visit->capacity?->date?->toDateString(),
+                'slot'          => $visit->capacity?->slot instanceof \App\Enums\TimeSlotEnum
+                    ? $visit->capacity->slot->value
+                    : $visit->capacity?->slot,
+                'created_at'    => $visit->created_at->toIso8601String(),
+            ];
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => $items,
+        ]);
+    }
+
+    /**
      * GET /api/public/transparansi/laporan
      *
      * Returns paginated PUBLISHED visit reports for public display.

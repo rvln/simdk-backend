@@ -48,6 +48,7 @@ Route::get('/public/transparansi/distribusi', [PublicTransparencyController::cla
 Route::get('/public/transparansi/kebutuhan', [PublicTransparencyController::class, 'inventories']);
 Route::get('/public/transparansi/kunjungan', [PublicTransparencyController::class, 'visits']);
 Route::get('/public/transparansi/laporan', [PublicTransparencyController::class, 'visitReports']);
+Route::get('/public/kunjungan/upcoming', [PublicTransparencyController::class, 'upcomingVisits']);
 
 /*
 |--------------------------------------------------------------------------
