@@ -8,6 +8,9 @@ use App\Services\PaymentService;
 use App\Services\InventoryService;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use App\Models\Donation;
+use App\Enums\DonationStatusEnum;
+use Illuminate\Support\Facades\DB;
 
 class DonationController extends Controller
 {
@@ -23,6 +26,9 @@ class DonationController extends Controller
     public function initiateDonation(InitiateDonationRequest $request)
     {
         try {
+            $paymentChannel = $request->input('payment_channel', 'MIDTRANS');
+            $paymentProof = $request->file('payment_proof');
+
             $result = $this->paymentService->initiateDonation(
                 Auth::id(),
                 [
@@ -31,6 +37,8 @@ class DonationController extends Controller
                     'donorPhone' => $request->donorPhone,
                 ],
                 (float) $request->amount,
+                $paymentChannel,
+                $paymentProof
             );
 
             return response()->json([
@@ -76,5 +84,57 @@ class DonationController extends Controller
                 'message' => $e->getMessage(),
             ], $e->getStatusCode());
         }
+    }
+
+    /**
+     * PATCH /api/admin/donations/{id}/approve
+     */
+    public function approveManualDonation($id)
+    {
+        return DB::transaction(function () use ($id) {
+            $donation = Donation::findOrFail($id);
+
+            if ($donation->status->value !== DonationStatusEnum::PENDING->value) {
+                return response()->json(['message' => 'Hanya donasi PENDING yang dapat disetujui.'], 422);
+            }
+
+            if ($donation->payment_channel !== 'MANUAL') {
+                return response()->json(['message' => 'Hanya donasi MANUAL yang dapat disetujui melalui endpoint ini.'], 403);
+            }
+
+            $donation->update(['status' => DonationStatusEnum::SUCCESS->value]);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Donasi manual berhasil disetujui.',
+                'data' => $donation
+            ]);
+        });
+    }
+
+    /**
+     * PATCH /api/admin/donations/{id}/reject
+     */
+    public function rejectManualDonation($id)
+    {
+        return DB::transaction(function () use ($id) {
+            $donation = Donation::findOrFail($id);
+
+            if ($donation->status->value !== DonationStatusEnum::PENDING->value) {
+                return response()->json(['message' => 'Hanya donasi PENDING yang dapat ditolak.'], 422);
+            }
+
+            if ($donation->payment_channel !== 'MANUAL') {
+                return response()->json(['message' => 'Hanya donasi MANUAL yang dapat ditolak melalui endpoint ini.'], 403);
+            }
+
+            $donation->update(['status' => DonationStatusEnum::REJECTED->value]);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Donasi manual berhasil ditolak.',
+                'data' => $donation
+            ]);
+        });
     }
 }

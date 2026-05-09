@@ -26,6 +26,8 @@ class Donation extends Model
         'amount',
         'snap_token',
         'payment_type',
+        'payment_channel',
+        'payment_proof',
         'status',
         'tracking_code',
         'expires_at',

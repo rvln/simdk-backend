@@ -31,27 +31,51 @@ class DonationValidationService
                       ->whereNotNull('expires_at')
                       ->where('expires_at', '<', now());
             } elseif ($filters['status'] === 'PENDING_DELIVERY') {
-                $query->where('status', DonationStatusEnum::PENDING_DELIVERY->value)
-                      ->where(function ($q) {
-                          $q->whereNull('expires_at')
-                            ->orWhere('expires_at', '>=', now());
+                $query->where(function ($q) {
+                    $q->where('status', DonationStatusEnum::PENDING_DELIVERY->value)
+                      ->where(function ($sq) {
+                          $sq->whereNull('expires_at')
+                             ->orWhere('expires_at', '>=', now());
                       });
+                })->orWhere(function ($q) {
+                    $q->where('status', DonationStatusEnum::PENDING->value)
+                      ->where('payment_channel', 'MANUAL');
+                });
+            } elseif ($filters['status'] === 'PENDING_MANUAL') {
+                // Synthetic filter from DANA tab: only PENDING + MANUAL channel
+                $query->where('status', DonationStatusEnum::PENDING->value)
+                      ->where('payment_channel', 'MANUAL');
+            } elseif ($filters['status'] === 'EXPIRED_FAILED') {
+                // Synthetic filter from DANA tab: terminal states
+                $query->whereIn('status', [
+                    DonationStatusEnum::EXPIRED->value,
+                    DonationStatusEnum::FAILED->value,
+                ]);
             } else {
                 $query->where('status', $filters['status']);
             }
         } elseif (empty($filters['status'])) {
-    // Default: only active PENDING_DELIVERY (not expired)
-    $query->where('status', DonationStatusEnum::PENDING_DELIVERY->value)
-          ->where(function ($q) {
-              $q->whereNull('expires_at')
-                ->orWhere('expires_at', '>=', now());
-          });
+            // Default: active PENDING_DELIVERY and active PENDING (MANUAL)
+            $query->where(function ($q) {
+                $q->where('status', DonationStatusEnum::PENDING_DELIVERY->value)
+                  ->where(function ($sq) {
+                      $sq->whereNull('expires_at')
+                         ->orWhere('expires_at', '>=', now());
+                  });
+            })->orWhere(function ($q) {
+                $q->where('status', DonationStatusEnum::PENDING->value)
+                  ->where('payment_channel', 'MANUAL');
+            });
         }
 
         if (!empty($filters['search'])) {
             $query->where(function ($q) use ($filters) {
                 $q->where('tracking_code', 'LIKE', '%' . $filters['search'] . '%')
-                  ->orWhere('donorName', 'LIKE', '%' . $filters['search'] . '%');
+                  ->orWhere('donorName', 'LIKE', '%' . $filters['search'] . '%')
+                  ->orWhere(function ($sq) use ($filters) {
+                      $sq->where('type', 'DANA')
+                         ->where('id', 'LIKE', '%' . $filters['search'] . '%');
+                  });
             });
         }
 

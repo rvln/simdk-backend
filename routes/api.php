@@ -99,6 +99,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/validasi-donasi/{id}/approve', [DonationValidationController::class, 'approve']);
     Route::post('/validasi-donasi/{id}/reject',  [DonationValidationController::class, 'reject']);
 
+    // Admin Manual Financial Donation Verification
+    Route::patch('/admin/donations/{id}/approve', [DonationController::class, 'approveManualDonation']);
+    Route::patch('/admin/donations/{id}/reject', [DonationController::class, 'rejectManualDonation']);
+
     // UGC Visit Reports — Visitor context (any authenticated user)
     Route::post('/visit-reports', [VisitReportController::class, 'store']);
     Route::get('/visit-reports/my', [VisitReportController::class, 'myReports']);

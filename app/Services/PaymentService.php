@@ -36,54 +36,75 @@ class PaymentService
      * @param float $amount        Donation amount.
      * @return array               [snap_token, donation]
      */
-    public function initiateDonation(?string $userId, array $donorData, float $amount): array
+    public function initiateDonation(?string $userId, array $donorData, float $amount, string $paymentChannel = 'MIDTRANS', $paymentProof = null): array
     {
-        $donation = Donation::create([
-            'user_id'    => $userId,
-            'donorName'  => $donorData['donorName'],
-            'donorEmail' => $donorData['donorEmail'],
-            'donorPhone' => $donorData['donorPhone'],
-            'type'       => DonationTypeEnum::DANA->value,
-            'amount'     => $amount,
-            'status'     => DonationStatusEnum::PENDING->value,
-        ]);
+        return DB::transaction(function () use ($userId, $donorData, $amount, $paymentChannel, $paymentProof) {
+            $proofPath = null;
+            if ($paymentChannel === 'MANUAL' && $paymentProof) {
+                $proofPath = $paymentProof->store('payment_proofs', 'public');
+            }
 
-        try {
-            // Generate a strictly unique Order ID for Midtrans
-            $orderId = 'DON-' . Str::uuid();
+            try {
+                $donation = Donation::create([
+                    'user_id'         => $userId,
+                    'donorName'       => $donorData['donorName'],
+                    'donorEmail'      => $donorData['donorEmail'],
+                    'donorPhone'      => $donorData['donorPhone'],
+                    'type'            => DonationTypeEnum::DANA->value,
+                    'amount'          => $amount,
+                    'status'          => DonationStatusEnum::PENDING->value,
+                    'payment_channel' => $paymentChannel,
+                    'payment_proof'   => $proofPath,
+                ]);
 
-            $params = [
-                'transaction_details' => [
-                    'order_id'     => $orderId,
-                    'gross_amount' => (int) $amount,
-                ],
-                'customer_details' => [
-                    'first_name' => $donorData['donorName'],
-                    'email'      => $donorData['donorEmail'],
-                    'phone'      => $donorData['donorPhone'],
-                ],
-            ];
+                if ($paymentChannel === 'MANUAL') {
+                    // tracking_code MUST remain null for financial donations.
+                    // DO NOT call Midtrans API.
+                    return [
+                        'donation' => $donation,
+                    ];
+                }
 
-            // Request Token from Midtrans
-            $snapToken = Snap::getSnapToken($params);
+                // Midtrans logic
+                $orderId = 'DON-' . Str::uuid();
 
-            // Save the token and order_id back to the database
-            $donation->update([
-                'order_id'   => $orderId,
-                'snap_token' => $snapToken,
-            ]);
+                $params = [
+                    'transaction_details' => [
+                        'order_id'     => $orderId,
+                        'gross_amount' => (int) $amount,
+                    ],
+                    'customer_details' => [
+                        'first_name' => $donorData['donorName'],
+                        'email'      => $donorData['donorEmail'],
+                        'phone'      => $donorData['donorPhone'],
+                    ],
+                ];
 
-            return [
-                'snap_token' => $snapToken,
-                'donation'   => $donation,
-            ];
+                // Request Token from Midtrans
+                $snapToken = Snap::getSnapToken($params);
 
-        } catch (Exception $e) {
-            Log::error('Midtrans Snap Token Error: ' . $e->getMessage(), [
-                'donation_id' => $donation->id,
-            ]);
-            throw new HttpException(502, 'Gerbang pembayaran sedang sibuk. Silakan coba beberapa saat lagi.');
-        }
+                // Save the token and order_id back to the database
+                $donation->update([
+                    'order_id'   => $orderId,
+                    'snap_token' => $snapToken,
+                ]);
+
+                return [
+                    'snap_token' => $snapToken,
+                    'donation'   => $donation,
+                ];
+
+            } catch (Exception $e) {
+                if ($proofPath) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($proofPath);
+                }
+
+                Log::error('Donation Initiation Error: ' . $e->getMessage(), [
+                    'userId' => $userId,
+                ]);
+                throw new HttpException(502, 'Terjadi kesalahan saat memproses donasi.');
+            }
+        });
     }
 
     /**

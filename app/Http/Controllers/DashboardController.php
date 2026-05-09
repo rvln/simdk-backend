@@ -35,16 +35,17 @@ class DashboardController extends Controller
             ->get()
             ->filter(fn ($visit) => !$visit->is_expired)
             ->count();
-        $pendingDonations = Donation::whereIn('status', [
-            DonationStatusEnum::PENDING_DELIVERY, 
-            DonationStatusEnum::PENDING
-        ])
-        ->where(function ($q) {
-        // Hitung yang belum expired:
-        // status PENDING (tidak punya expires_at) tetap dihitung
-        // status PENDING_DELIVERY hanya dihitung jika expires_at masih di masa depan atau null
-        $q->whereNull('expires_at')
-        ->orWhere('expires_at', '>=', now());
+        $pendingDonations = Donation::where(function ($query) {
+            // Physical goods waiting to arrive (or ANY PENDING_DELIVERY that is not expired)
+            $query->where('status', DonationStatusEnum::PENDING_DELIVERY->value)
+                  ->where(function ($sq) {
+                      $sq->whereNull('expires_at')
+                         ->orWhere('expires_at', '>=', now());
+                  });
+        })->orWhere(function ($query) {
+            // Manual Transfers waiting for admin approval
+            $query->where('status', DonationStatusEnum::PENDING->value)
+                  ->where('payment_channel', 'MANUAL');
         })->count();
         
         $startDate = Carbon::today();
