@@ -265,15 +265,11 @@ class CapacityService
                 throw new HttpException(422, 'Slot yang dipilih sudah penuh.');
             }
 
-            // 3. Reserve the new slot
-            $newCapacity->increment('booked');
-
             // 4. Update visit record
             $visit->update([
                 'capacity_id'   => $newCapacityId,
                 'status'        => VisitStatusEnum::PENDING->value,
                 'is_rescheduled' => true,
-                'admin_notes'   => null,
             ]);
 
             // 5. Snapshot Pattern — Item Donation Sync

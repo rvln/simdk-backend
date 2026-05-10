@@ -87,14 +87,34 @@ class VisitService
     public function rejectVisit(string $id, string $reason)
     {
         return DB::transaction(function () use ($id, $reason) {
-            $visit = Visit::findOrFail($id);
+            $visit = Visit::lockForUpdate()->findOrFail($id);
 
-            if ($visit->status !== VisitStatusEnum::PENDING) {
-                throw ValidationException::withMessages(['status' => 'Kunjungan ini sudah diproses.']);
+            $currentStatus = $visit->status instanceof \BackedEnum ? $visit->status->value : $visit->status;
+            $allowedStatuses = [
+                VisitStatusEnum::PENDING->value,
+                VisitStatusEnum::APPROVED->value,
+                VisitStatusEnum::NEEDS_RESCHEDULE->value,
+            ];
+
+            if (!in_array($currentStatus, $allowedStatuses, true)) {
+                throw ValidationException::withMessages(['status' => 'Kunjungan ini sudah diproses dan tidak dapat ditolak.']);
+            }
+
+            // Capacity Release Guard
+            // Under "Reserve-on-Approval", only APPROVED visits hold a slot.
+            if ($currentStatus === VisitStatusEnum::APPROVED->value) {
+                $capacity = Capacity::where('id', $visit->capacity_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if ($capacity->booked > 0) {
+                    $capacity->decrement('booked');
+                }
             }
 
             $visit->status = VisitStatusEnum::REJECTED;
             $visit->rejection_reason = $reason;
+            $visit->is_rescheduled = false; // Strict state reset
             $visit->save();
 
             return $visit;
