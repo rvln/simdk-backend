@@ -17,10 +17,13 @@ class Visit extends Model
         'status',
         'confirmed_time',
         'rejection_reason',
+        'admin_notes',
+        'is_rescheduled',
     ];
 
     protected $casts = [
         'status' => VisitStatusEnum::class,
+        'is_rescheduled' => 'boolean',
     ];
 
     protected $appends = ['is_expired'];

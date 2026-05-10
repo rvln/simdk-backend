@@ -209,4 +209,120 @@ class CapacityService
             return $visit->toArray();
         });
     }
+
+    /**
+     * Processes a visitor-initiated reschedule for a NEEDS_RESCHEDULE visit.
+     *
+     * Transactional Guarantees:
+     *   1. Ownership validation (visit.user_id === $userId)
+     *   2. Status gate (only NEEDS_RESCHEDULE visits)
+     *   3. Pessimistic lock on NEW capacity via lockForUpdate()
+     *   4. Capacity slot availability check + increment booked
+     *   5. Visit update: capacity_id, status→PENDING, is_rescheduled→true, admin_notes→null
+     *   6. Snapshot Pattern for item sync:
+     *      - DELETE items omitted from payload
+     *      - UPDATE items with matching id (qty change)
+     *      - CREATE items without id (new additions)
+     *
+     * @param string $visitId
+     * @param string $userId
+     * @param string $newCapacityId
+     * @param array|null $updatedItems
+     * @return array
+     */
+    public function processReschedule(string $visitId, string $userId, string $newCapacityId, ?array $updatedItems): array
+    {
+        return DB::transaction(function () use ($visitId, $userId, $newCapacityId, $updatedItems) {
+            // 1. Fetch and validate ownership
+            $visit = Visit::find($visitId);
+
+            if (!$visit) {
+                throw new HttpException(404, 'Visit not found.');
+            }
+
+            if ($visit->user_id !== $userId) {
+                throw new HttpException(403, 'Anda tidak memiliki akses ke kunjungan ini.');
+            }
+
+            $currentStatus = $visit->status instanceof \BackedEnum
+                ? $visit->status->value
+                : $visit->status;
+
+            if ($currentStatus !== VisitStatusEnum::NEEDS_RESCHEDULE->value) {
+                throw new HttpException(422, 'Hanya kunjungan berstatus NEEDS_RESCHEDULE yang dapat di-reschedule.');
+            }
+
+            // 2. Pessimistic lock on NEW capacity + availability check
+            $newCapacity = Capacity::where('id', $newCapacityId)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$newCapacity) {
+                throw new HttpException(404, 'Slot kapasitas baru tidak ditemukan.');
+            }
+
+            if ($newCapacity->booked >= $newCapacity->quota) {
+                throw new HttpException(422, 'Slot yang dipilih sudah penuh.');
+            }
+
+            // 3. Reserve the new slot
+            $newCapacity->increment('booked');
+
+            // 4. Update visit record
+            $visit->update([
+                'capacity_id'   => $newCapacityId,
+                'status'        => VisitStatusEnum::PENDING->value,
+                'is_rescheduled' => true,
+                'admin_notes'   => null,
+            ]);
+
+            // 5. Snapshot Pattern — Item Donation Sync
+            if ($updatedItems !== null && $visit->donation) {
+                $donationId = $visit->donation->id;
+                $existingItems = \App\Models\ItemDonation::where('donation_id', $donationId)->get();
+
+                // Extract incoming IDs (only those with an id = existing items)
+                $incomingIds = collect($updatedItems)
+                    ->pluck('id')
+                    ->filter()
+                    ->values()
+                    ->all();
+
+                // DELETE: remove items whose ID is NOT in the incoming payload
+                $existingItems->each(function ($item) use ($incomingIds) {
+                    if (!in_array($item->id, $incomingIds, true)) {
+                        $item->delete();
+                    }
+                });
+
+                // UPDATE / CREATE
+                foreach ($updatedItems as $incoming) {
+                    if (!empty($incoming['id'])) {
+                        // UPDATE existing item
+                        $existingItem = \App\Models\ItemDonation::where('id', $incoming['id'])
+                            ->where('donation_id', $donationId)
+                            ->first();
+
+                        if ($existingItem) {
+                            $existingItem->update([
+                                'qty'               => $incoming['qty'],
+                                'itemName_snapshot'  => $incoming['itemName_snapshot'],
+                                'inventory_id'       => $incoming['inventory_id'] ?? $existingItem->inventory_id,
+                            ]);
+                        }
+                    } else {
+                        // CREATE new item
+                        \App\Models\ItemDonation::create([
+                            'donation_id'        => $donationId,
+                            'inventory_id'       => $incoming['inventory_id'] ?? null,
+                            'itemName_snapshot'   => $incoming['itemName_snapshot'],
+                            'qty'                => $incoming['qty'],
+                        ]);
+                    }
+                }
+            }
+
+            return $visit->load(['capacity', 'donation.itemDonations'])->toArray();
+        });
+    }
 }

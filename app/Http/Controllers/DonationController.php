@@ -137,4 +137,18 @@ class DonationController extends Controller
             ]);
         });
     }
+    /**
+     * GET /api/user/donations
+     * Returns all donations belonging to the authenticated user,
+     * with eager-loaded itemDonations for BARANG-type records.
+     */
+    public function myDonations()
+    {
+        $donations = Donation::where('user_id', Auth::id())
+            ->with('itemDonations')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json(['data' => $donations]);
+    }
 }

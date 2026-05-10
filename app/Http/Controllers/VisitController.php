@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\SubmitVisitRequest;
 use App\Http\Requests\ApproveVisitRequest;
+use App\Http\Requests\RescheduleVisitRequest;
 use App\Services\CapacityService;
 use App\Services\InventoryService;
 use Illuminate\Support\Facades\Auth;
@@ -131,6 +132,68 @@ class VisitController extends Controller
             return response()->json([
                 'status' => 'success',
                 'message' => 'Visit resolved successfully.'
+            ]);
+        } catch (HttpException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], $e->getStatusCode());
+        }
+    }
+
+    /**
+     * GET /api/user/visits
+     * Returns all visits belonging to the authenticated user,
+     * grouped by VisitStatusEnum value, with eager-loaded relations.
+     */
+    public function myVisits()
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        $visits = \App\Models\Visit::where('user_id', $user->id)
+            ->with(['capacity', 'donation.itemDonations'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Group by status value (enum → string) for frontend consumption
+        $grouped = [];
+        foreach (\App\Enums\VisitStatusEnum::cases() as $status) {
+            $grouped[$status->value] = [];
+        }
+
+        foreach ($visits as $visit) {
+            $statusValue = $visit->status instanceof \BackedEnum
+                ? $visit->status->value
+                : $visit->status;
+            $grouped[$statusValue][] = $visit;
+        }
+
+        return response()->json(['data' => $grouped]);
+    }
+
+    /**
+     * PUT /api/visits/{id}/reschedule
+     * Processes a visitor-initiated reschedule for a NEEDS_RESCHEDULE visit.
+     * Controller passes only primitives — zero Eloquent.
+     */
+    public function reschedule(RescheduleVisitRequest $request, string $id)
+    {
+        try {
+            /** @var \App\Models\User $user */
+            $user = Auth::user();
+
+            $result = $this->capacityService->processReschedule(
+                $id,
+                $user->id,
+                $request->new_capacity_id,
+                $request->updated_items,
+            );
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Kunjungan berhasil dijadwalkan ulang.',
+                'data' => $result,
             ]);
         } catch (HttpException $e) {
             return response()->json([

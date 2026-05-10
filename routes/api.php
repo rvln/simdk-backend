@@ -71,7 +71,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Visits (Pengunjung & Pengurus)
     Route::post('/visits', [VisitController::class, 'submitRequest']);
+    Route::get('/user/visits', [VisitController::class, 'myVisits']);
+    Route::get('/user/donations', [DonationController::class, 'myDonations']);
     Route::patch('/visits/{id}/resolve', [VisitController::class, 'resolve']);
+    Route::put('/visits/{id}/reschedule', [VisitController::class, 'reschedule']);
 
     // Visit Approval Domain (Pengurus & Kepala Panti)
     Route::get('/kunjungan/manage', [\App\Http\Controllers\VisitApprovalController::class, 'index']);

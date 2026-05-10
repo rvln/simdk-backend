@@ -103,10 +103,14 @@ class VisitService
 
     /**
      * Mark a visit as needing reschedule and store the admin's recommendation.
-     * Reuses the `rejection_reason` column to store recommendation notes —
-     * avoids creating a new migration for a transient advisory field.
      *
-     * No capacity mutation — this is purely a status transition + advisory note.
+     * Capacity Release Rule (Concurrency Fix):
+     *   If the visit was previously APPROVED, its capacity slot was already
+     *   reserved (booked incremented). We MUST release that slot immediately
+     *   by decrementing `booked` under pessimistic lock to prevent phantom
+     *   slot hoarding and ensure the capacity is available for other visitors.
+     *
+     *   If the visit was PENDING, no capacity was reserved, so no release needed.
      *
      * @param string $id
      * @param string $recommendationNotes
@@ -117,14 +121,34 @@ class VisitService
         return DB::transaction(function () use ($id, $recommendationNotes) {
             $visit = Visit::findOrFail($id);
 
-            if ($visit->status !== VisitStatusEnum::PENDING) {
+            $currentStatus = $visit->status instanceof \BackedEnum
+                ? $visit->status->value
+                : $visit->status;
+
+            $allowedStatuses = [
+                VisitStatusEnum::PENDING->value,
+                VisitStatusEnum::APPROVED->value,
+            ];
+
+            if (!in_array($currentStatus, $allowedStatuses, true)) {
                 throw ValidationException::withMessages([
-                    'status' => 'Hanya kunjungan berstatus PENDING yang dapat diminta jadwal ulang.',
+                    'status' => 'Hanya kunjungan berstatus PENDING atau APPROVED yang dapat diminta jadwal ulang.',
                 ]);
             }
 
+            // Capacity Release: if visit was APPROVED, the slot was reserved — release it now
+            if ($currentStatus === VisitStatusEnum::APPROVED->value) {
+                $capacity = Capacity::where('id', $visit->capacity_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if ($capacity->booked > 0) {
+                    $capacity->decrement('booked');
+                }
+            }
+
             $visit->status = VisitStatusEnum::NEEDS_RESCHEDULE;
-            $visit->rejection_reason = $recommendationNotes;
+            $visit->admin_notes = $recommendationNotes;
             $visit->save();
 
             return $visit;
