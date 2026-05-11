@@ -26,7 +26,7 @@ class CapacityService
      * @param string $capacityId  Target capacity slot UUID.
      * @return Visit
      */
-    public function createVisitRequest(string $userId, string $capacityId): Visit
+    public function createVisitRequest(string $userId, string $capacityId, string $visitorType = 'Individu', ?string $proposalFilePath = null): Visit
     {
         // Authentication State Constraint (AGENTS.md §3)
         $user = User::find($userId);
@@ -53,6 +53,8 @@ class CapacityService
         return Visit::create([
             'user_id'     => $userId,
             'capacity_id' => $capacityId,
+            'visitor_type' => $visitorType,
+            'proposal_file_path' => $proposalFilePath,
             'status'      => VisitStatusEnum::PENDING->value,
         ]);
     }
@@ -230,9 +232,9 @@ class CapacityService
      * @param array|null $updatedItems
      * @return array
      */
-    public function processReschedule(string $visitId, string $userId, string $newCapacityId, ?array $updatedItems): array
+    public function processReschedule(string $visitId, string $userId, string $newCapacityId): array
     {
-        return DB::transaction(function () use ($visitId, $userId, $newCapacityId, $updatedItems) {
+        return DB::transaction(function () use ($visitId, $userId, $newCapacityId) {
             // 1. Fetch and validate ownership
             $visit = Visit::find($visitId);
 
@@ -271,52 +273,6 @@ class CapacityService
                 'status'        => VisitStatusEnum::PENDING->value,
                 'is_rescheduled' => true,
             ]);
-
-            // 5. Snapshot Pattern — Item Donation Sync
-            if ($updatedItems !== null && $visit->donation) {
-                $donationId = $visit->donation->id;
-                $existingItems = \App\Models\ItemDonation::where('donation_id', $donationId)->get();
-
-                // Extract incoming IDs (only those with an id = existing items)
-                $incomingIds = collect($updatedItems)
-                    ->pluck('id')
-                    ->filter()
-                    ->values()
-                    ->all();
-
-                // DELETE: remove items whose ID is NOT in the incoming payload
-                $existingItems->each(function ($item) use ($incomingIds) {
-                    if (!in_array($item->id, $incomingIds, true)) {
-                        $item->delete();
-                    }
-                });
-
-                // UPDATE / CREATE
-                foreach ($updatedItems as $incoming) {
-                    if (!empty($incoming['id'])) {
-                        // UPDATE existing item
-                        $existingItem = \App\Models\ItemDonation::where('id', $incoming['id'])
-                            ->where('donation_id', $donationId)
-                            ->first();
-
-                        if ($existingItem) {
-                            $existingItem->update([
-                                'qty'               => $incoming['qty'],
-                                'itemName_snapshot'  => $incoming['itemName_snapshot'],
-                                'inventory_id'       => $incoming['inventory_id'] ?? $existingItem->inventory_id,
-                            ]);
-                        }
-                    } else {
-                        // CREATE new item
-                        \App\Models\ItemDonation::create([
-                            'donation_id'        => $donationId,
-                            'inventory_id'       => $incoming['inventory_id'] ?? null,
-                            'itemName_snapshot'   => $incoming['itemName_snapshot'],
-                            'qty'                => $incoming['qty'],
-                        ]);
-                    }
-                }
-            }
 
             return $visit->load(['capacity', 'donation.itemDonations'])->toArray();
         });

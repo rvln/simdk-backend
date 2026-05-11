@@ -15,6 +15,8 @@ class SubmitVisitRequest extends FormRequest
     {
         return [
             'capacity_id'    => 'required|uuid|exists:capacities,id',
+            'visitor_type'   => 'required|string|in:Individu,Lembaga/Instansi',
+            'proposal_file'  => 'required_if:visitor_type,Lembaga/Instansi|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:5120',
             'bringsDonation' => 'sometimes|boolean',
             'donorPhone'     => 'required_if:bringsDonation,true|string|max:20',
             'items'          => 'required_if:bringsDonation,true|array|min:1',

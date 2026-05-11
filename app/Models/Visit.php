@@ -14,6 +14,8 @@ class Visit extends Model
     protected $fillable = [
         'user_id',
         'capacity_id',
+        'visitor_type',
+        'proposal_file_path',
         'status',
         'confirmed_time',
         'rejection_reason',
@@ -26,7 +28,15 @@ class Visit extends Model
         'is_rescheduled' => 'boolean',
     ];
 
-    protected $appends = ['is_expired'];
+    protected $appends = ['is_expired', 'proposal_file_url'];
+
+    public function getProposalFileUrlAttribute()
+    {
+        if ($this->proposal_file_path) {
+            return asset('storage/' . $this->proposal_file_path);
+        }
+        return null;
+    }
 
     public function getIsExpiredAttribute()
     {

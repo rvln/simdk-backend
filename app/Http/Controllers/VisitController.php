@@ -29,11 +29,20 @@ class VisitController extends Controller
             $user = Auth::user();
             $userId = $user->id;
 
+            $visitorType = $request->input('visitor_type', 'Individu');
+            $proposalFilePath = null;
+
+            if ($request->hasFile('proposal_file')) {
+                $proposalFilePath = $request->file('proposal_file')->store('documents/proposals', 'public');
+            }
+
             // Delegate visit creation to CapacityService
             // Service independently validates email_verified_at
             $visit = $this->capacityService->createVisitRequest(
                 $userId,
                 $request->capacity_id,
+                $visitorType,
+                $proposalFilePath
             );
 
             // Unified endpoint: if visitor brings donation items, process Smart Cart
