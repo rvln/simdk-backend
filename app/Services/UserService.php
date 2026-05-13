@@ -165,11 +165,14 @@ class UserService
         // For now, we use a simple closure-based email as a functional placeholder
         // that matches the UML contract without introducing a non-existent Mailable.
         try {
+            $frontendUrl = config('cors.allowed_origins')[0] ?? 'http://localhost:3000';
+            $verificationUrl = "{$frontendUrl}/verify-email?token={$rawToken}";
+
             Mail::raw(
-                "Kode verifikasi email Empanti Anda: {$rawToken}\n\nGunakan token ini untuk memverifikasi akun Anda. Token berlaku selama 24 jam.",
+                "Halo {$user->name},\n\nTerima kasih telah menjadi bagian dari Panti Asuhan Dr Lucas. Silakan klik tautan di bawah ini untuk memverifikasi akun Anda:\n\n{$verificationUrl}\n\nTautan ini akan kadaluarsa dalam 24 jam.\n\nJika Anda tidak merasa mendaftar, silakan abaikan email ini.",
                 function ($message) use ($user) {
                     $message->to($user->email)
-                            ->subject('Verifikasi Email - Empanti SIMDK');
+                            ->subject('Verifikasi Email - Panti Asuhan Dr Lucas');
                 }
             );
         } catch (\Throwable $e) {
