@@ -16,6 +16,7 @@ use App\Http\Controllers\PublicDonationController;
 use App\Http\Controllers\PublicTransparencyController;
 use App\Http\Controllers\VisitReportController;
 use App\Http\Controllers\AdminReportModerationController;
+use App\Http\Controllers\Auth\SocialiteController;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,6 +24,8 @@ use App\Http\Controllers\AdminReportModerationController;
 |--------------------------------------------------------------------------
 */
 
+Route::get('/auth/google/redirect', [SocialiteController::class, 'redirectToGoogle'])->name('google.login');
+Route::get('/auth/google/callback', [SocialiteController::class, 'handleGoogleCallback'])->name('google.callback');
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/verify-email', [AuthController::class, 'verifyEmail']);
