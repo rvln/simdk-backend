@@ -229,4 +229,83 @@ class UserService
             $user->delete();
         });
     }
+
+    /**
+     * Send a password reset link to the user's email.
+     *
+     * Uses Laravel's built-in password_reset_tokens table via the Password broker.
+     * Generates a secure token, persists it (hashed) in the DB, and dispatches
+     * an email containing a link back to the frontend's /reset-password page.
+     *
+     * If the email doesn't exist, we still return success (security best practice:
+     * don't reveal whether an email is registered).
+     */
+    public function sendPasswordResetLink(string $email): void
+    {
+        $user = User::where('email', $email)->first();
+
+        if (!$user) {
+            // Silent return — don't leak whether the email exists.
+            return;
+        }
+
+        // Generate token via Laravel's Password broker (stores hashed in password_reset_tokens)
+        $token = app('auth.password.broker')->createToken($user);
+
+        // Dispatch reset email
+        try {
+            $frontendUrl = config('cors.allowed_origins')[0] ?? 'http://localhost:3000';
+            $resetUrl = "{$frontendUrl}/reset-password?token={$token}&email=" . urlencode($user->email);
+
+            Mail::raw(
+                "Halo {$user->name},\n\nKami menerima permintaan untuk mereset kata sandi akun Anda di Panti Asuhan Dr Lucas.\n\nSilakan klik tautan berikut untuk mengatur kata sandi baru:\n\n{$resetUrl}\n\nTautan ini berlaku selama 60 menit. Jika Anda tidak meminta reset kata sandi, silakan abaikan email ini.\n\nSalam,\nTim Panti Asuhan Dr Lucas",
+                function ($message) use ($user) {
+                    $message->to($user->email)
+                            ->subject('Reset Kata Sandi - Panti Asuhan Dr Lucas');
+                }
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed to dispatch password reset email: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Reset the user's password using a valid token.
+     *
+     * Validates the token+email pair via Laravel's Password broker, then:
+     *   1. Updates the user's password (Hash::make).
+     *   2. Deletes the used token from password_reset_tokens.
+     *   3. Revokes all existing Sanctum tokens (force re-login with new password).
+     *
+     * Throws HttpException if the token is invalid/expired or email doesn't match.
+     */
+    public function resetPassword(string $email, string $token, string $password): void
+    {
+        $user = User::where('email', $email)->first();
+
+        if (!$user) {
+            throw new HttpException(400, 'Email tidak ditemukan.');
+        }
+
+        // Validate token via Laravel's Password broker
+        $broker = app('auth.password.broker');
+
+        if (!$broker->tokenExists($user, $token)) {
+            throw new HttpException(400, 'Token tidak valid atau sudah kadaluarsa.');
+        }
+
+        DB::transaction(function () use ($user, $password, $broker) {
+            // 1. Update password
+            $user->update([
+                'password' => Hash::make($password),
+            ]);
+
+            // 2. Delete the used token
+            $broker->deleteToken($user);
+
+            // 3. Revoke all existing Sanctum tokens (security: force re-login)
+            $user->tokens()->delete();
+        });
+    }
 }
+

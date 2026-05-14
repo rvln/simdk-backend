@@ -6,6 +6,8 @@ use App\Http\Requests\RegisterRequest;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\VerifyEmailRequest;
 use App\Http\Requests\ResendVerificationRequest;
+use App\Http\Requests\ForgotPasswordRequest;
+use App\Http\Requests\ResetPasswordRequest;
 use App\Services\UserService;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -134,6 +136,46 @@ class AuthController extends Controller
                 'status'  => 'error',
                 'message' => 'Gagal menghapus akun. Silakan coba lagi.',
             ], 500);
+        }
+    }
+
+    /**
+     * POST /api/forgot-password
+     * Delegates password reset link generation to UserService.
+     * Always returns success to prevent email enumeration attacks.
+     */
+    public function forgotPassword(ForgotPasswordRequest $request)
+    {
+        $this->userService->sendPasswordResetLink($request->email);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Jika email terdaftar, link reset kata sandi telah dikirim.',
+        ]);
+    }
+
+    /**
+     * POST /api/reset-password
+     * Delegates password reset execution to UserService.
+     */
+    public function resetPassword(ResetPasswordRequest $request)
+    {
+        try {
+            $this->userService->resetPassword(
+                $request->email,
+                $request->token,
+                $request->password,
+            );
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Kata sandi berhasil direset. Silakan masuk dengan kata sandi baru.',
+            ]);
+        } catch (HttpException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], $e->getStatusCode());
         }
     }
 }
