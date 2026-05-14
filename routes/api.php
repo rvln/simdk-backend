@@ -24,8 +24,6 @@ use App\Http\Controllers\Auth\SocialiteController;
 |--------------------------------------------------------------------------
 */
 
-Route::get('/auth/google/redirect', [SocialiteController::class, 'redirectToGoogle'])->name('google.login');
-Route::get('/auth/google/callback', [SocialiteController::class, 'handleGoogleCallback'])->name('google.callback');
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/verify-email', [AuthController::class, 'verifyEmail']);
@@ -63,6 +61,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Auth — Token Revocation (G-01 Security Hotfix)
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    // Auth — Permanent account deletion (user + all owned history)
+    Route::delete('/user/account', [AuthController::class, 'deleteAccount']);
 
     // Auth — Fetch current user session (RBAC backbone)
     Route::get('/user', function (\Illuminate\Http\Request $request) {

@@ -21,33 +21,29 @@ class SocialAuthService
         // 1. Dapatkan data user dari Google
         $googleUser = Socialite::driver('google')->user();
 
-        // 2. Bungkus operasi database dalam transaksi
+        // 2. Gunakan transaksi untuk menjaga integritas data
         return DB::transaction(function () use ($googleUser) {
-            // 3. Cari user berdasarkan email atau google_id
-            $user = User::where('email', $googleUser->getEmail())
-                        ->orWhere('google_id', $googleUser->getId())
-                        ->first();
+            // 3. Cari user berdasarkan email
+            $user = User::where('email', $googleUser->getEmail())->first();
 
             if ($user) {
-                // Jika user sudah ada, perbarui google_id jika kosong
-                if (is_null($user->google_id)) {
+                // Jika user ada tapi belum punya google_id, hubungkan akunnya
+                if (empty($user->google_id)) {
                     $user->update([
                         'google_id' => $googleUser->getId(),
                     ]);
                 }
             } else {
-                // Jika user benar-benar baru, buat akun
+                // Jika user benar-benar baru, buat akun baru
                 $user = User::create([
                     'name'              => $googleUser->getName(),
                     'email'             => $googleUser->getEmail(),
                     'google_id'         => $googleUser->getId(),
-                    'password'          => Hash::make(Str::random(24)),
-                    'email_verified_at' => now(),
+                    'password'          => Hash::make(Str::random(32)),
+                    'email_verified_at' => now(), // User dari Google otomatis terverifikasi
+                    'role'              => \App\Enums\RoleEnum::PENGUNJUNG,
                 ]);
             }
-
-            // 4. Login pengguna
-            Auth::login($user, true);
 
             return $user;
         });

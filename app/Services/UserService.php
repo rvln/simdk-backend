@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class UserService
 {
@@ -180,5 +181,52 @@ class UserService
             // UML specifies async (fire-and-forget) dispatch.
             \Illuminate\Support\Facades\Log::warning('Failed to dispatch verification email: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Permanently delete a user account along with ALL owned history.
+     *
+     * Deletion order (cascade-safe):
+     *   1. Revoke all Sanctum tokens (invalidate active sessions).
+     *   2. Hard-delete all owned Visits (and their child relations via DB cascade).
+     *   3. Hard-delete all owned Donations (and their item_donations via DB cascade).
+     *   4. Hard-delete all owned VisitReports.
+     *   5. Hard-delete the User row itself.
+     *
+     * Wrapped in a single DB transaction; any failure rolls back completely.
+     *
+     * AGENTS.md §3: No destructive side-effects outside the authenticated user's scope.
+     */
+    public function deleteAccount(User $user): void
+    {
+        DB::transaction(function () use ($user) {
+            // 1. Revoke all Sanctum tokens to kill active sessions immediately.
+            $user->tokens()->delete();
+
+            // 2. Hard-delete all visits owned by this user.
+            //    The visits table FK to capacities is cascade-null/restrict per ERD;
+            //    deleting the visit row is safe — capacity counts are NOT automatically
+            //    decremented here because the visit is being permanently expunged.
+            $user->visits()->each(function ($visit) {
+                // Delete child visit reports first to avoid FK constraint violations.
+                $visit->visitReports()->delete();
+                $visit->delete();
+            });
+
+            // 3. Hard-delete all donations owned by this user.
+            //    item_donations are expected to cascade via FK on delete cascade.
+            $user->donations()->each(function ($donation) {
+                $donation->itemDonations()->delete();
+                $donation->delete();
+            });
+
+            // 4. Hard-delete any orphan VisitReports not caught above.
+            if (method_exists($user, 'visitReports')) {
+                $user->visitReports()->delete();
+            }
+
+            // 5. Delete the User row itself.
+            $user->delete();
+        });
     }
 }

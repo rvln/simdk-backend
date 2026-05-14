@@ -30,17 +30,20 @@ class SocialiteController extends Controller
      */
     public function handleGoogleCallback(Request $request): RedirectResponse
     {
-        // Jika ingin validasi request, bisa gunakan Form Request khusus di sini
-        // $request->validate([...]);
-
         try {
-            // Panggil Service untuk menangani seluruh logika bisnis
             $user = $this->socialAuthService->handleGoogleCallback();
-
-            return redirect()->intended('/dashboard')->with('success', 'Login berhasil!');
+            
+            // Buat token Sanctum untuk user tersebut
+            $token = $user->createToken('auth_token')->plainTextToken;
+            
+            // Ambil URL Frontend dari config/env
+            $frontendUrl = env('FRONTEND_URL', 'http://localhost:3000');
+            
+            // Redirect ke halaman khusus di frontend untuk menyimpan token
+            return redirect()->to("{$frontendUrl}/auth/callback?token={$token}");
         } catch (\Exception $e) {
-            // Tangani jika user menolak atau terjadi error lain
-            return redirect()->route('login')->with('error', 'Autentikasi Google gagal. Silakan coba lagi.');
+            $frontendUrl = env('FRONTEND_URL', 'http://localhost:3000');
+            return redirect()->to("{$frontendUrl}/login?error=social_auth_failed");
         }
     }
 }

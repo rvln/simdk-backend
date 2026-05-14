@@ -112,4 +112,28 @@ class AuthController extends Controller
 
         return response()->noContent(); // HTTP 204
     }
+
+    /**
+     * DELETE /user/account
+     * Permanently deletes the authenticated user's account and ALL owned history
+     * (visits, donations, item_donations, visit_reports, tokens).
+     *
+     * Delegates entirely to UserService::deleteAccount() which wraps the operation
+     * in a DB transaction. Returns HTTP 204 on success.
+     *
+     * AGENTS.md §2: Controller → validate → delegate to Service.
+     */
+    public function deleteAccount(Request $request)
+    {
+        try {
+            $this->userService->deleteAccount($request->user());
+
+            return response()->noContent(); // HTTP 204
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Gagal menghapus akun. Silakan coba lagi.',
+            ], 500);
+        }
+    }
 }

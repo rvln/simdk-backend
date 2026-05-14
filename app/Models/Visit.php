@@ -84,4 +84,9 @@ class Visit extends Model
     {
         return $this->hasOne(Donation::class);
     }
+
+    public function visitReports()
+    {
+        return $this->hasMany(VisitReport::class);
+    }
 }

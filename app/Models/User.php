@@ -18,6 +18,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'google_id',
         'email_verified_at',
         'verification_token',
         'verification_token_expires_at',
@@ -26,6 +27,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'google_id',
         'verification_token',
         'verification_token_expires_at',
     ];
@@ -48,6 +50,11 @@ class User extends Authenticatable
     public function donations()
     {
         return $this->hasMany(Donation::class);
+    }
+
+    public function visitReports()
+    {
+        return $this->hasMany(VisitReport::class);
     }
 
     public function rejectedLogs()
