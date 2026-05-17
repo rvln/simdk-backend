@@ -12,7 +12,8 @@
         "laravel/sanctum": "^4.3",
         "laravel/socialite": "^5.27",
         "laravel/tinker": "^3.0",
-        "midtrans/midtrans-php": "^2.6"
+        "midtrans/midtrans-php": "^2.6",
+        "symfony/resend-mailer": "*"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

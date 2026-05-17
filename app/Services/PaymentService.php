@@ -229,9 +229,10 @@ class PaymentService
     public function generateTrackingCode(): string
     {
         do {
-            $uuidFragment = strtoupper(substr(uniqid(), -4));
+            // Generate an 8-character random alphanumeric string for high entropy
+            $fragment = strtoupper(Str::random(8));
             $year = now()->format('Y');
-            $code = "TXN-DON-{$year}-{$uuidFragment}";
+            $code = "TXN-DON-{$year}-{$fragment}";
         } while (Donation::where('tracking_code', $code)->exists());
 
         return $code;

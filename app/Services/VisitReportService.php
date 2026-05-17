@@ -67,7 +67,7 @@ class VisitReportService
             $report = VisitReport::create([
                 'visit_id'   => $visit->id,
                 'user_id'    => $user->id,
-                'content'    => $data['content'],
+                'content'    => strip_tags($data['content']), // Prevent XSS
                 'image_path' => !empty($imagePaths) ? $imagePaths : null,
                 'status'     => ReportStatusEnum::PENDING->value,
             ]);

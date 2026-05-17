@@ -31,15 +31,15 @@ Route::post('/resend-verification', [AuthController::class, 'resendVerification'
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
-Route::post('/donasi/finansial', [DonationController::class, 'initiateDonation']);
-Route::post('/donasi/barang', [DonationController::class, 'submitItemDonation']);
+Route::post('/donasi/finansial', [DonationController::class, 'initiateDonation'])->middleware('throttle:10,1');
+Route::post('/donasi/barang', [DonationController::class, 'submitItemDonation'])->middleware('throttle:10,1');
 Route::post('/webhooks/midtrans', [WebhookController::class, 'handleMidtransWebhook']);
 
-Route::get('/tracking/{tracking_code}', [TrackingController::class, 'trackDonation']);
+Route::get('/tracking/{tracking_code}', [TrackingController::class, 'trackDonation'])->middleware('throttle:30,1');
 Route::get('/inventories', [InventoryController::class, 'publicIndex']);
 Route::get('/capacities', [\App\Http\Controllers\CapacityController::class, 'index']);
 Route::get('/public/katalog-kebutuhan', [InventoryController::class, 'getPublicCatalog']);
-Route::post('/public/donasi-barang', [PublicDonationController::class, 'store']);
+Route::post('/public/donasi-barang', [PublicDonationController::class, 'store'])->middleware('throttle:10,1');
 Route::get('/public/donasi-barang/{tracking_code}', [PublicDonationController::class, 'show']);
 Route::patch('/public/donations/{id}/cancel', [PublicDonationController::class, 'cancel']);
 Route::get('/public/donations/{id}/invoice', [PublicDonationController::class, 'showInvoice']);
@@ -76,7 +76,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard/overview', [\App\Http\Controllers\DashboardController::class, 'getOverview']);
 
     // Visits (Pengunjung & Pengurus)
-    Route::post('/visits', [VisitController::class, 'submitRequest']);
+    Route::post('/visits', [VisitController::class, 'submitRequest'])->middleware('throttle:5,1');
     Route::get('/user/visits', [VisitController::class, 'myVisits']);
     Route::get('/user/donations', [DonationController::class, 'myDonations']);
     Route::patch('/visits/{id}/resolve', [VisitController::class, 'resolve']);
@@ -114,7 +114,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/admin/donations/{id}/reject', [DonationController::class, 'rejectManualDonation']);
 
     // UGC Visit Reports — Visitor context (any authenticated user)
-    Route::post('/visit-reports', [VisitReportController::class, 'store']);
+    Route::post('/visit-reports', [VisitReportController::class, 'store'])->middleware('throttle:10,1');
     Route::get('/visit-reports/my', [VisitReportController::class, 'myReports']);
 
     // UGC Visit Reports — Admin Moderation (Pengurus & Kepala Panti only)
